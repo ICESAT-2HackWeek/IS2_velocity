@@ -1,6 +1,6 @@
-# Sample Project
+# Surface Velocity
 
-This is as an example on how teams can structure their project repositories. Thanks to Lindsey Heagey and Joachim Meyer for the template, provided originally for [Geohackweek](https://github.com/geohackweek/sample_project_repository).
+Surface ice velocity from repeat passes using the across slope between beams and the slope between points on the same track. Cross overs could also be used. Which product?, maybe ATL06 or ATL03. It should be interesting to compare different areas (e.g. Antarctica, Greenland, Patagonia). Surface ice velocity from laser altimetry  has been done with ICESat 1 over the Ross Ice Shelf. The smaller footprint could improve the accuracy and the precise repeat passes could account for seasonality over certain regions.
 
 ## Files
 
