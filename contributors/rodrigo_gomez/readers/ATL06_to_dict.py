@@ -56,7 +56,7 @@ def ATL06_to_dict(filename, dataset_dict):
                     temp['beam']=np.zeros_like(temp['h_li'])+beam_ind
                     temp['filename']=filename
                     temp_2=file_re.search(filename)
-                    temp['rgt']=int(temp['rgt'])
-                    temp['cycle']=int(temp['cycle'])
+                    temp['rgt']=int(temp_2['rgt'])
+                    temp['cycle']=int(temp_@['cycle'])
                     D6.append(temp)
     return D6
