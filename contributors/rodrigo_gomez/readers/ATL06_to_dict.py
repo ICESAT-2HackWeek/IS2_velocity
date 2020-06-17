@@ -21,6 +21,8 @@ def ATL06_to_dict(filename, dataset_dict):
     D6=[]
     pairs=[1, 2, 3]
     beams=['l','r']
+    file_re=re.compile('ATL06_(?P<date>\d+)_(?P<rgt>\d\d\d\d)(?P<cycle>\d\d)(?P<region>\d\d)_(?P<release>\d\d\d)_(?P<version>\d\d).h5')
+
     # open the HDF5 file
     with h5py.File(filename) as h5f:
         # loop over beam pairs
@@ -44,10 +46,17 @@ def ATL06_to_dict(filename, dataset_dict):
                                 temp[dataset][temp[dataset]==fill_value]=np.NaN
                         except KeyError as e:
                             pass
+                    if epsg is not None:
+                        xy=np.array(pyproj.proj.Proj(epsg)(temp['longitude'], temp['latitude']))
+                        temp['x']=xy[0,:].reshape(temp['latitude'].shape)
+                        temp['y']=xy[1,:].reshape(temp['latitude'].shape)
                 if len(temp) > 0:
                     # it's sometimes convenient to have the beam and the pair as part of the output data structure: This is how we put them there.
                     temp['pair']=np.zeros_like(temp['h_li'])+pair
                     temp['beam']=np.zeros_like(temp['h_li'])+beam_ind
                     temp['filename']=filename
+                    temp_2=file_re.search(filename)
+                    temp['rgt']=int(temp['rgt'])
+                    temp['cycle']=int(temp['cycle'])
                     D6.append(temp)
     return D6
