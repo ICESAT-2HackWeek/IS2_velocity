@@ -15,13 +15,11 @@ warnings.filterwarnings('ignore')
 atl3_dir = '/Users/benhills/Google Drive File Stream/Shared drives/IceSat2_Surface_Velocity/Shared_Data/FIS_0848_ATL03/ATL03_files/'
 files = glob.glob(atl3_dir+'**/ATL03*.h5')
 
-for file_name in files:
-    print(file_name)
 
 for file_name in files[2:]:
 
     # read the IS2 data with Tyler's ATL03 reader:
-    IS2_atl03_mds, IS2_atl03_attrs, IS2_atl03_beams = read_HDF5_ATL03(files[0])
+    IS2_atl03_mds, IS2_atl03_attrs, IS2_atl03_beams = read_HDF5_ATL03(file_name)
     # add x_atc to the ATL03 data structure (this function adds to the LS2_ATL03_mds dictionary)
     get_ATL03_x_atc(IS2_atl03_mds, IS2_atl03_attrs, IS2_atl03_beams)
 
@@ -54,5 +52,5 @@ for file_name in files[2:]:
             fit = np.polyfit(xfit,hfit,1);
             hs[i] = np.polyval(fit,x);
 
-    out_name = file_name[len(atl3_dir)+10:-3] + '_' + beams[0] + '_spacing_' + str(round(xstep)) + '_window_' + str(round(xwin))
+    out_name = file_name[:-3] + '_' + beams[0] + '_spacing_' + str(round(xstep)) + '_window_' + str(round(xwin))
     np.save(out_name,np.array([xs,hs]))

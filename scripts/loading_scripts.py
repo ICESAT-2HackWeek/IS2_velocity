@@ -12,16 +12,16 @@ def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None):
             filename: ATl06 file to read
             beam: a string specifying which beam is to be read (ex: gt1l, gt1r, gt2l, etc)
             field_dict: A dictinary describing the fields to be read
-                    keys give the group names to be read, 
+                    keys give the group names to be read,
                     entries are lists of datasets within the groups
             index: which entries in each field to read
             epsg: an EPSG code specifying a projection (see www.epsg.org).  Good choices are:
                 for Greenland, 3413 (polar stereographic projection, with Greenland along the Y axis)
                 for Antarctica, 3031 (polar stereographic projection, centered on the Pouth Pole)
         Output argument:
-            D6: dictionary containing ATL06 data.  Each dataset in 
-                dataset_dict has its own entry in D6.  Each dataset 
-                in D6 contains a numpy array containing the 
+            D6: dictionary containing ATL06 data.  Each dataset in
+                dataset_dict has its own entry in D6.  Each dataset
+                in D6 contains a numpy array containing the
                 data
     """
     if field_dict is None:
@@ -45,6 +45,9 @@ def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None):
                     bad_vals=D[ds]==h5f[ds_name].attrs['_FillValue']
                     D[ds]=D[ds].astype(float)
                     D[ds][bad_vals]=np.NaN
+        D['data_start_utc'] = h5f['/ancillary_data/data_start_utc'][:]
+        D['delta_time'] = h5f['/' + beam + '/land_ice_segments/delta_time'][:]
+        D['segment_id'] = h5f['/' + beam + '/land_ice_segments/segment_id'][:]
     if epsg is not None:
         xy=np.array(pyproj.proj.Proj(epsg)(D['longitude'], D['latitude']))
         D['x']=xy[0,:].reshape(D['latitude'].shape)
@@ -54,3 +57,4 @@ def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None):
     D['cycle']=int(temp['cycle'])
     D['beam']=beam
     return D
+
