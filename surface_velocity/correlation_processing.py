@@ -8,36 +8,35 @@ from astropy.time import Time
 # -------------------------------------------------------------------------------------------
 
 def velocity(x_in,dh1,dh2,dt,output_xs,search_width=100,segment_length=2000,dx=20,corr_threshold=.65):
-    """
-    Calculate along-track velocity by correlating the along-track elevation between repeat acquisitions.
+    r"""Calculate along-track velocity by correlating the along-track elevation between repeat acquisitions.
 
-    Input
+    Parameters
     ------
-    x_in:   array
-        along-track distance
-    dh1:    array
-        surface slope at cycle 1
-    dh2:    array
-        surface slope at cycle 2
-    dt: float
-        time difference between cycles
-    output_xs:  array
-        along-track distances at which the velocities will be calculated and output
-    search_width:   float
-        the maximum distance which the stencil array will be moved to look for a good correlation
-    segment_length: float
-        the length of the array to be correlated
-    dx: float
-        spacing between points in the x array
-    corr_threshold: float
-        minimum correlation to be considered an acceptable fit
+    x_in : array
+           along-track distance
+    dh1 : array
+          surface slope at cycle 1
+    dh2 : array
+          surface slope at cycle 2
+    dt : float
+         time difference between cycles
+    output_xs : array
+                along-track distances at which the velocities will be calculated and output
+    search_width : float
+                   the maximum distance which the stencil array will be moved to look for a good correlation
+    segment_length : float
+                     the length of the array to be correlated
+    dx : float
+         spacing between points in the x array
+    corr_threshold : float
+                     minimum correlation to be considered an acceptable fit
 
     Output
     ------
-    velocities: array
-        calculated velocities corresponding to locations output_xs
-    correlations:   array
-        calculated correlations for each of the velocity points
+    velocities : array
+                 calculated velocities corresponding to locations output_xs
+    correlations : array
+                   calculated correlations for each of the velocity points
     """
 
     # create output arrays to be filled
@@ -82,25 +81,24 @@ def velocity(x_in,dh1,dh2,dt,output_xs,search_width=100,segment_length=2000,dx=2
 # -------------------------------------------------------------------------------------------
 
 def smooth_and_diff(x_in,h_in,win=None):
-    """
-    Smooth and differentiate an along-track height array.
+    r"""Smooth and differentiate an along-track height array.
 
-    Input
+    Parameters
     ------
-    x_in:   array
-        along-track distance
-    h_in:   array
-        along-track elevation
-    win:    float; default None
-        smoothing window (in meters)
-        for example, if win=60 m, the smoothing window is a 3 point running average smoothed dataset, because each point is 20 m apart
+    x_in : array
+           along-track distance
+    h_in : array
+           along-track elevation
+    win : float; default None
+          smoothing window (in meters)
+          for example, if win=60 m, the smoothing window is a 3 point running average smoothed dataset, because each point is 20 m apart
 
     Output
     ------
-    h:     array
+    h : array
         along-track height (smoothed if win is not None)
-    dh:     array
-        surface slope
+    dh : array
+         surface slope
     """
 
     # Default is no smoothing
@@ -125,26 +123,25 @@ def smooth_and_diff(x_in,h_in,win=None):
 # -------------------------------------------------------------------------------------------
 
 def fill_seg_ids(x_in,h_in,seg_ids,dx=20):
-    """
-    Fill the along-track vector so that there are no skipped points
+    r"""Fill the along-track vector so that there are no skipped points
 
-    Input
+    Parameters
     ------
-    x_in:       array
-        along-track distance
-    h_in:       array
-        along-track elevation
-    seg_ids:    array
-        segment ids as imported with atl06_to_dict function
-    dx:         float; default 20
-        step between points (20 m is the default for atl06)
+    x_in : array
+           along-track distance
+    h_in : array
+           along-track elevation
+    seg_ids : array
+              segment ids as imported with atl06_to_dict function
+    dx : float; default 20
+         step between points (20 m is the default for atl06)
 
     Output
     ------
-    x_full:     array
-        filled array of along-track distance
-    h_full:     array
-        filled array of alont-track elevation
+    x_full : array
+             filled array of along-track distance
+    h_full : array
+             filled array of alont-track elevation
     """
 
     # make a monotonically increasing x vector
@@ -158,18 +155,17 @@ def fill_seg_ids(x_in,h_in,seg_ids,dx=20):
 # -------------------------------------------------------------------------------------------
 
 def time_diff(D1,D2):
-    """
-    Get the time difference between two cycles
+    r"""Get the time difference between two cycles
 
-    Input
+    Parameters
     ------
-    D1:   Dictionary 1
-    D2:   Dictionary 2
+    D1 : Dictionary 1
+    D2 : Dictionary 2
 
     Output
     ------
-    dt:   float
-        time step
+    dt : float
+         time step
     """
 
     # get time strings
