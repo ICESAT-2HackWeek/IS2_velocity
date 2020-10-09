@@ -5,30 +5,6 @@ import numpy as np
 import pointCollection as pc
 import os, pyproj
 
-#From Ben Smith's code loading in .tif file, running into issues likely with directories
-#data_root='/srv/shared/surface_velocity/FIS_Velocity/'
-#spatial_extent = np.array([-102, -76, -98, -74.5])
-spatial_extent = np.array([-65, -86, -55, -81])
-lat=spatial_extent[[1, 3, 3, 1, 1]]
-lon=spatial_extent[[2, 2, 0, 0, 2]]
-print(lat)
-print(lon)
-# project the coordinates to Antarctic polar stereographic
-xy=np.array(pyproj.Proj(3031)(lon, lat))
-# get the bounds of the projected coordinates
-XR=[np.nanmin(xy[0,:]), np.nanmax(xy[0,:])]
-YR=[np.nanmin(xy[1,:]), np.nanmax(xy[1,:])]
-#Originally tried to load data from a local directory, should change to shared directory
-#Measures_vx=pc.grid.data().from_geotif(os.path.join(data_root,'Measures2_FIS_Vx.tif'), bounds=[XR, YR])
-#Measures_vy=pc.grid.data().from_geotif(os.path.join(data_root,'Measures2_FIS_Vy.tif'), bounds=[XR, YR])
-
-#Rodrigo Gomez Fell computer path @ UC
-data_root = '/mnt/user1/Antarctica/Quantarctica3/Glaciology/MEaSUREs Ice Flow Velocity/'
-
-Measures_vx=pc.grid.data().from_geotif(os.path.join(data_root,'anta_phase_map_VX.tif'), bounds=[XR, YR])
-Measures_vy=pc.grid.data().from_geotif(os.path.join(data_root,'anta_phase_map_VY.tif'), bounds=[XR, YR])
-
-
 def add_surface_velocity_to_is2_dict(is2_dict, spatial_extent, path, vel_x, vel_y ):
     """
 
