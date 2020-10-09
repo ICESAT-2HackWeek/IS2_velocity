@@ -1,4 +1,4 @@
-# Surface Velocity
+# ICESat-2 Surface Velocity
 
 Scripts for estimating ice velocity from ICESat-2 data.
 
