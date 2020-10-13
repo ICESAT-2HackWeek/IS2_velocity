@@ -9,6 +9,7 @@ setup(
     packages=find_packages(exclude=['data','test','notebooks']),
     install_requires=[
         'numpy',
+        'matplotlib',
         'scipy',
         'h5py',
         'astropy',
