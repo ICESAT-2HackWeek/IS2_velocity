@@ -4,4 +4,3 @@ scipy
 h5py
 astropy
 icepyx
-pointCollection
