@@ -22,5 +22,13 @@ RUN cd repo \
     && \
     pip3 install . \
     && \
+    pip3 install -r requirements.txt \
+    && \
     cd /root \
+    && :
+
+CMD jupyter notebook \
+    --ip 0.0.0.0 \
+    --notebook-dir=repo/notebooks/
+    --allow-root \
     && :
