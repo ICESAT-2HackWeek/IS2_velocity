@@ -4,6 +4,7 @@
 import numpy as np
 from scipy.signal import correlate
 from astropy.time import Time
+import os,re,h5py,pyproj
 
 
 def fill_seg_ids(x_in,h_in,seg_ids,dx=20):
@@ -100,7 +101,7 @@ def time_diff(D1,D2):
 
 # -------------------------------------------------------------------------------------------
 
-def velocity(x_atc, h_li_diff, lats, lons, segment_ids, beams, cycle1, cycle2, segment_length, search_width, along_track_step, max_percent_nans, dx):
+def velocity(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, beams, cycle1, cycle2, segment_length, search_width, along_track_step, max_percent_nans, dx):
     """
 
     :param x_atc:
@@ -145,6 +146,13 @@ def velocity(x_atc, h_li_diff, lats, lons, segment_ids, beams, cycle1, cycle2, s
     midpoints_lons[rgt] = {}
     midpoints_seg_ids[rgt] = {}
     midpoints_xy[rgt] = {}
+
+    ### Determing Elapsed time between cycles
+    t1_string = times[cycle1]['gt1l'][0].astype(str)  # figure out later if just picking hte first one it ok
+    t1 = Time(t1_string)
+    t2_string = times[cycle2]['gt1l'][0].astype(str)  # figure out later if just picking hte first one it ok
+    t2 = Time(t2_string)
+    dt = (t2 - t1).jd  # difference in julian days
 
     ### Loop over each beam
     for beam in beams:

@@ -6,6 +6,8 @@ import os,re,h5py,pyproj
 import glob
 import pandas as pd
 
+
+
 def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None, format = 'hdf5'):
     """
     Read selected datasets from an ATL06 file
@@ -62,8 +64,6 @@ def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None, format
         D['beam']=beam
     return D
 
-
-
 ### Some functions
 # MISSING HERE: mask by data quality?
 def load_data_by_rgt(rgt, path_to_data, product, filter_type = 'running_average', running_avg_window = None, format = 'hdf5'):
@@ -78,6 +78,8 @@ def load_data_by_rgt(rgt, path_to_data, product, filter_type = 'running_average'
     product: ex., ATL06
     format, ex 'hdf5'
     """
+
+    from IS2_velocity.correlation_processing import filt, differentiate
 
     # hard code these for now:
     cycles = ['03','04','05','06','07'] # not doing 1 and 2, because don't overlap exactly
