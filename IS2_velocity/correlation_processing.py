@@ -5,7 +5,7 @@ import numpy as np
 from scipy.signal import correlate
 from astropy.time import Time
 import os,re,h5py,pyproj
-
+from IS2_velocity.extract_alongtrack import get_measures_along_track_velocity
 
 def fill_seg_ids(x_in,h_in,seg_ids,dx=20):
     r"""Fill the along-track vector so that there are no skipped points
@@ -101,7 +101,7 @@ def time_diff(D1,D2):
 
 # -------------------------------------------------------------------------------------------
 
-def velocity(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, beams, cycle1, cycle2, segment_length, search_width, along_track_step, max_percent_nans, dx):
+def calculate_velocities(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, beams, cycle1, cycle2, product, segment_length, search_width, along_track_step, max_percent_nans, dx, saving = False, write_out_path = '.', prepend = '', spatial_extent = None, map_data_root=None):
     """
 
     :param x_atc:
@@ -122,7 +122,7 @@ def velocity(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, be
     # takes output of load_data_by_rgt
 
     from scipy.signal import correlate, detrend
-
+    import glob
 
     ### Create dictionaries to put info in
     velocities = {}
@@ -153,6 +153,24 @@ def velocity(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, be
     t2_string = times[cycle2]['gt1l'][0].astype(str)  # figure out later if just picking hte first one it ok
     t2 = Time(t2_string)
     dt = (t2 - t1).jd  # difference in julian days
+
+    if saving:
+        ### Where to save the results:
+        h5_file_out = write_out_path + prepend + '_rgt' + rgt + '.hdf5'
+
+        ### Save some metadata
+        with h5py.File(h5_file_out, 'w') as f:
+            f['dx'] = dx
+            f['product'] = product
+            f['segment_length'] = segment_length
+            f['search_width'] = search_width
+            f['along_track_step'] = along_track_step
+            f['max_percent_nans'] = max_percent_nans
+            # f['smoothing'] = smoothing
+            # f['smoothing_window_size'] = smoothing_window_size
+            f['process_date'] = str(Time.now().value)
+            f['rgt'] = rgt
+
 
     ### Loop over each beam
     for beam in beams:
@@ -308,6 +326,24 @@ def velocity(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, be
         ### Output xy locations of midpoints as well
         midpoints_xy[rgt][beam] = np.array(pyproj.Proj(3031)(midpoints_lons[rgt][beam], midpoints_lats[rgt][beam]))
         #extract measures veloc outside of this loop
+
+        if saving:
+            measures_Vx_path = glob.glob( map_data_root + '*_Vx.tif')[0]
+            measures_Vy_path = glob.glob( map_data_root + '*_Vy.tif')[0]
+
+            ### Add velocities to hdf5 file for each beam
+            with h5py.File(h5_file_out, 'a') as f:
+                f[beam + '/x_atc'] = midpoints_x_atc[rgt][beam]  # assign x_atc value of half way along the segment
+                f[beam + '/latitudes'] = midpoints_lats[rgt][beam]  # assign x_atc value of half way along the segment
+                f[beam + '/longitudes'] = midpoints_lons[rgt][beam]  # assign x_atc value of half way along the segment
+                f[beam + '/velocities'] = velocities[rgt][beam]  # assign x_atc value of half way along the segment
+                f[beam + '/correlation_coefficients'] = correlations[rgt][beam]  # assign x_atc value of half way along the segment
+                f[beam + '/best_lags'] = lags[rgt][beam]  # assign x_atc value of half way along the segment
+                f[beam + '/segment_ids'] = midpoints_seg_ids[rgt][beam]
+                f[beam + '/first_cycle_time'] = str(Time(times[cycle1][beam][0]))
+                f[beam + '/second_cycle_time'] = str(Time(times[cycle2][beam][0]))
+                f[beam + '/Measures_v_along'] = get_measures_along_track_velocity(midpoints_xy[rgt][beam][0], midpoints_xy[rgt][beam][1], spatial_extent,
+                                                                          measures_Vx_path, measures_Vy_path)
 
     return velocities, correlations, lags, midpoints_x_atc, midpoints_xy, midpoints_lons, midpoints_lats
 
