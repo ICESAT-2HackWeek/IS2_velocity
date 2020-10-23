@@ -3,8 +3,12 @@
 
 import numpy as np
 import os,re,h5py,pyproj
+import glob
+import pandas as pd
 
-def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None):
+
+
+def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None, format = 'hdf5'):
     """
     Read selected datasets from an ATL06 file
 
@@ -18,59 +22,64 @@ def atl06_to_dict(filename, beam, field_dict=None, index=None, epsg=None):
         epsg: an EPSG code specifying a projection (see www.epsg.org).  Good choices are:
             for Greenland, 3413 (polar stereographic projection, with Greenland along the Y axis)
             for Antarctica, 3031 (polar stereographic projection, centered on the Pouth Pole)
+        format: what format the files are in. Default = hd5f. No other formats currently supported.
     Output argument:
         D6: dictionary containing ATL06 data.  Each dataset in
             dataset_dict has its own entry in D6.  Each dataset
             in D6 contains a numpy array containing the
             data
     """
-    if field_dict is None:
-        field_dict={None:['latitude','longitude','h_li', 'atl06_quality_summary'],\
-                    'ground_track':['x_atc','y_atc'],\
-                    'fit_statistics':['dh_fit_dx', 'dh_fit_dy']}
-    D={}
-    file_re=re.compile('ATL06_(?P<date>\d+)_(?P<rgt>\d\d\d\d)(?P<cycle>\d\d)(?P<region>\d\d)_(?P<release>\d\d\d)_(?P<version>\d\d).h5')
-    with h5py.File(filename,'r') as h5f:
-        for key in field_dict:
-            for ds in field_dict[key]:
-                if key is not None:
-                    ds_name=beam+'/land_ice_segments/'+key+'/'+ds
-                else:
-                    ds_name=beam+'/land_ice_segments/'+ds
-                if index is not None:
-                    D[ds]=np.array(h5f[ds_name][index])
-                else:
-                    D[ds]=np.array(h5f[ds_name])
-                if '_FillValue' in h5f[ds_name].attrs:
-                    bad_vals=D[ds]==h5f[ds_name].attrs['_FillValue']
-                    D[ds]=D[ds].astype(float)
-                    D[ds][bad_vals]=np.NaN
-        D['data_start_utc'] = h5f['/ancillary_data/data_start_utc'][:]
-        D['delta_time'] = h5f['/' + beam + '/land_ice_segments/delta_time'][:]
-        D['segment_id'] = h5f['/' + beam + '/land_ice_segments/segment_id'][:]
-    if epsg is not None:
-        xy=np.array(pyproj.proj.Proj(epsg)(D['longitude'], D['latitude']))
-        D['x']=xy[0,:].reshape(D['latitude'].shape)
-        D['y']=xy[1,:].reshape(D['latitude'].shape)
-    temp=file_re.search(filename)
-    D['rgt']=int(temp['rgt'])
-    D['cycle']=int(temp['cycle'])
-    D['beam']=beam
+    if format == 'hdf5':
+        if field_dict is None:
+            field_dict={None:['latitude','longitude','h_li', 'atl06_quality_summary'],\
+                        'ground_track':['x_atc','y_atc'],\
+                        'fit_statistics':['dh_fit_dx', 'dh_fit_dy']}
+        D={}
+        file_re=re.compile('ATL06_(?P<date>\d+)_(?P<rgt>\d\d\d\d)(?P<cycle>\d\d)(?P<region>\d\d)_(?P<release>\d\d\d)_(?P<version>\d\d).h5')
+        with h5py.File(filename,'r') as h5f:
+            for key in field_dict:
+                for ds in field_dict[key]:
+                    if key is not None:
+                        ds_name=beam+'/land_ice_segments/'+key+'/'+ds
+                    else:
+                        ds_name=beam+'/land_ice_segments/'+ds
+                    if index is not None:
+                        D[ds]=np.array(h5f[ds_name][index])
+                    else:
+                        D[ds]=np.array(h5f[ds_name])
+                    if '_FillValue' in h5f[ds_name].attrs:
+                        bad_vals=D[ds]==h5f[ds_name].attrs['_FillValue']
+                        D[ds]=D[ds].astype(float)
+                        D[ds][bad_vals]=np.NaN
+            D['data_start_utc'] = h5f['/ancillary_data/data_start_utc'][:]
+            D['delta_time'] = h5f['/' + beam + '/land_ice_segments/delta_time'][:]
+            D['segment_id'] = h5f['/' + beam + '/land_ice_segments/segment_id'][:]
+        if epsg is not None:
+            xy=np.array(pyproj.proj.Proj(epsg)(D['longitude'], D['latitude']))
+            D['x']=xy[0,:].reshape(D['latitude'].shape)
+            D['y']=xy[1,:].reshape(D['latitude'].shape)
+        temp=file_re.search(filename)
+        D['rgt']=int(temp['rgt'])
+        D['cycle']=int(temp['cycle'])
+        D['beam']=beam
     return D
-
-
 
 ### Some functions
 # MISSING HERE: mask by data quality?
-def load_data_by_rgt(rgt, smoothing, smoothing_window_size, dx, path_to_data, product):
+def load_data_by_rgt(rgt, path_to_data, product, filter_type = 'running_average', running_avg_window = None, format = 'hdf5'):
     """
     rgt: repeat ground track number of desired data
-    smoothing: if true, a centered running avergae filter of smoothing_window_size will be used
-    smoothing_window_size: how large a smoothing window to use (in meters)
-    dx: desired spacing
+    filter_type: Name of desired filter type.
+        'running_average' = a centered running avergae filter of smoothing_window_size will be used
+        None = return raw data, no filter
+    running_average_window: Default None
+    dx: desired spacing. NOT USED, removed from function (should be retrieved from data itself)
     path_to_data:
     product: ex., ATL06
+    format, ex 'hdf5'
     """
+
+    from IS2_velocity.correlation_processing import filt, differentiate
 
     # hard code these for now:
     cycles = ['03','04','05','06','07'] # not doing 1 and 2, because don't overlap exactly
@@ -106,97 +115,103 @@ def load_data_by_rgt(rgt, smoothing, smoothing_window_size, dx, path_to_data, pr
         x_ps[cycle]= {}
         y_ps[cycle]= {}
 
+        if format == 'hdf5':
 
-        filenames = glob.glob(os.path.join(path_to_data, f'*{product}_*_{rgt}{cycle}*_003*.h5'))
-        error_count=0
-
-
-        for filename in filenames: # try and load any available files; hopefully is just one
-            try:
-                for beam in beams:
-                    Di[filename]=atl06_to_dict(filename,'/'+ beam, index=None, epsg=3031)
+            filenames = glob.glob(os.path.join(path_to_data, f'*{product}_*_{rgt}{cycle}*_003*.h5'))
+            error_count=0
 
 
-
-                    times[cycle][beam] = Di[filename]['data_start_utc']
-
-                    # extract h_li and x_atc, and lat/lons for that section
-                    x_atc_tmp = Di[filename]['x_atc']
-                    h_li_tmp = Di[filename]['h_li']#[ixs]
-                    lats_tmp = Di[filename]['latitude']
-                    lons_tmp = Di[filename]['longitude']
-                    x_ps_tmp = Di[filename]['x']
-                    y_ps_tmp= Di[filename]['y']
-
-
-                    # segment ids:
-                    seg_ids = Di[filename]['segment_id']
-                    min_seg_ids[cycle][beam] = seg_ids[0]
-                    #print(len(seg_ids), len(x_atc_tmp))
-
-                    # make a monotonically increasing x vector
-                    # assumes dx = 20 exactly, so be carefull referencing back
-                    ind = seg_ids - np.nanmin(seg_ids) # indices starting at zero, using the segment_id field, so any skipped segment will be kept in correct location
-                    x_full = np.arange(np.max(ind)+1) * 20 + x_atc_tmp[0]
-                    h_full = np.zeros(np.max(ind)+1) + np.NaN
-                    h_full[ind] = h_li_tmp
-                    lats_full = np.zeros(np.shape(x_full)) * np.nan
-                    lats_full[ind] = lats_tmp
-                    lons_full = np.zeros(np.shape(x_full)) * np.nan
-                    lons_full[ind] = lons_tmp
-                    x_ps_full = np.zeros(np.shape(x_full)) * np.nan
-                    x_ps_full[ind] = x_ps_tmp
-                    y_ps_full = np.zeros(np.shape(x_full)) * np.nan
-                    y_ps_full[ind] = y_ps_tmp
-
-                    ## save the segment id's themselves, with gaps filled in
-                    segment_ids[cycle][beam] = np.zeros(np.max(ind)+1) + np.NaN
-                    segment_ids[cycle][beam][ind] = seg_ids
-
-
-                    x_atc[cycle][beam] = x_full
-                    h_li_raw[cycle][beam] = h_full # preserves nan values
-                    lons[cycle][beam] = lons_full
-                    lats[cycle][beam] = lats_full
-                    x_ps[cycle][beam] = x_ps_full
-                    y_ps[cycle][beam] = y_ps_full
-
-                    ### fill in nans with noise h_li datasets
-            #                         h = ma.array(h_full,mask =np.isnan(h_full)) # created a masked array, mask is where the nans are
-            #                         h_full_filled = h.mask * (np.random.randn(*h.shape)) # fill in all the nans with random noise
-
-                    ### interpolate nans in pandas
-                    # put in dataframe for just this step; eventually rewrite to use only dataframes?
-                    data = {'x_full': x_full, 'h_full': h_full}
-                    df = pd.DataFrame(data, columns = ['x_full','h_full'])
-                    #df.plot(x='x_full',y='h_full')
-                    # linear interpolation for now
-                    df['h_full'].interpolate(method = 'linear', inplace = True)
-                    h_full_interp = df['h_full'].values
-                    h_li_raw_NoNans[cycle][beam] = h_full_interp # has filled nan values
-
-
-                    # running average smoother /filter
-                    if smoothing == True:
-                        h_smoothed = (1/smoothing_window_size) * np.convolve(filt, h_full_interp, mode = 'same')
-                        h_li[cycle][beam] = h_smoothed
-
-                        # differentiate that section of data
-                        h_diff = (h_smoothed[1:] - h_smoothed[0:-1]) / (x_full[1:] - x_full[0:-1])
-                    else:
-                        h_li[cycle][beam] = h_full_interp
-                        h_diff = (h_full_interp[1:] - h_full_interp[0:-1]) / (x_full[1:] - x_full[0:-1])
-                    h_li_diff[cycle][beam] = h_diff
+            for filename in filenames: # try and load any available files; hopefully is just one
+                try:
+                    for beam in beams:
+                        Di[filename]=atl06_to_dict(filename,'/'+ beam, index=None, epsg=3031, format = 'hdf5')
 
 
 
-                    #print(len(x_full), len(h_full), len(lats_full), len(seg_ids), len(h_full_interp), len(h_diff))
+                        times[cycle][beam] = Di[filename]['data_start_utc']
+
+                        # extract h_li and x_atc, and lat/lons for that section
+                        x_atc_tmp = Di[filename]['x_atc']
+                        h_li_tmp = Di[filename]['h_li']#[ixs]
+                        lats_tmp = Di[filename]['latitude']
+                        lons_tmp = Di[filename]['longitude']
+                        x_ps_tmp = Di[filename]['x']
+                        y_ps_tmp= Di[filename]['y']
 
 
-                cycles_this_rgt+=[cycle]
-            except KeyError as e:
-                print(f'file {filename} encountered error {e}')
-                error_count += 1
+                        # segment ids:
+                        seg_ids = Di[filename]['segment_id']
+                        min_seg_ids[cycle][beam] = seg_ids[0]
+                        #print(len(seg_ids), len(x_atc_tmp))
+
+                        # make a monotonically increasing x vector
+                        # assumes dx = 20 exactly, so be carefull referencing back
+                        ind = seg_ids - np.nanmin(seg_ids) # indices starting at zero, using the segment_id field, so any skipped segment will be kept in correct location
+                        # TASK: Change dx to depend on data loaded, not be hard coded as 20 (as in line below)
+                        x_full = np.arange(np.max(ind)+1) * 20 + x_atc_tmp[0]
+                        h_full = np.zeros(np.max(ind)+1) + np.NaN
+                        h_full[ind] = h_li_tmp
+                        lats_full = np.zeros(np.shape(x_full)) * np.nan
+                        lats_full[ind] = lats_tmp
+                        lons_full = np.zeros(np.shape(x_full)) * np.nan
+                        lons_full[ind] = lons_tmp
+                        x_ps_full = np.zeros(np.shape(x_full)) * np.nan
+                        x_ps_full[ind] = x_ps_tmp
+                        y_ps_full = np.zeros(np.shape(x_full)) * np.nan
+                        y_ps_full[ind] = y_ps_tmp
+
+                        ## save the segment id's themselves, with gaps filled in
+                        segment_ids[cycle][beam] = np.zeros(np.max(ind)+1) + np.NaN
+                        segment_ids[cycle][beam][ind] = seg_ids
+
+
+                        x_atc[cycle][beam] = x_full
+                        h_li_raw[cycle][beam] = h_full # preserves nan values
+                        lons[cycle][beam] = lons_full
+                        lats[cycle][beam] = lats_full
+                        x_ps[cycle][beam] = x_ps_full
+                        y_ps[cycle][beam] = y_ps_full
+
+                        ### fill in nans with noise h_li datasets
+                #                         h = ma.array(h_full,mask =np.isnan(h_full)) # created a masked array, mask is where the nans are
+                #                         h_full_filled = h.mask * (np.random.randn(*h.shape)) # fill in all the nans with random noise
+
+                        ### interpolate nans in pandas
+                        # put in dataframe for just this step; eventually rewrite to use only dataframes?
+                        data = {'x_full': x_full, 'h_full': h_full}
+                        df = pd.DataFrame(data, columns = ['x_full','h_full'])
+                        #df.plot(x='x_full',y='h_full')
+                        # linear interpolation for now
+                        df['h_full'].interpolate(method = 'linear', inplace = True)
+                        h_full_interp = df['h_full'].values
+                        h_li_raw_NoNans[cycle][beam] = h_full_interp # has filled nan values
+
+                        ### Apply any filters; differentiate
+                        dx = np.median(x_full[1:] - x_full[:-1])
+                        if filter_type == 'running_average':
+                            if running_avg_window == None:
+                                running_avg_window = 100
+
+                            h_filt = filt(x1 = x_full, h1 = h_full_interp, dx = dx, filter_type = 'running_average', running_avg_window = running_avg_window)
+                            h_li[cycle][beam] = h_filt
+
+                            # differentiate that section of data
+                            h_diff = differentiate(x_full, h_filt) #(h_filt[1:] - h_filt[0:-1]) / (x_full[1:] - x_full[0:-1])
+                        elif filter_type == None:
+                            h_li[cycle][beam] = h_full_interp
+                            h_diff = differentiate(x_full, h_full_interp) # (h_full_interp[1:] - h_full_interp[0:-1]) / (x_full[1:] - x_full[0:-1])
+
+                        h_li_diff[cycle][beam] = h_diff
+
+
+
+                        #print(len(x_full), len(h_full), len(lats_full), len(seg_ids), len(h_full_interp), len(h_diff))
+
+
+                    cycles_this_rgt+=[cycle]
+                except KeyError as e:
+                    print(f'file {filename} encountered error {e}')
+                    error_count += 1
 
     print('Cycles available: ' + ','.join(cycles_this_rgt))
     return x_atc, lats, lons, h_li_raw, h_li_raw_NoNans, h_li, h_li_diff, \
