@@ -1,0 +1,19 @@
+name: is2v
+channels:
+    - conda-forge
+dependencies:
+  - python=3.7.*
+  - jupyterlab=0.35.*
+  - matplotlib=3.0.*
+  - ipympl
+  - scipy=1.2.*
+  - numpy
+  - pandas=0.24.*
+  - pytest=4.4.*
+  - h5py
+  - astropy
+  - pyproj
+  - gdal
+  - pip=19.0.*
+  - pip:
+      - git+https://github.com/SmithB/pointCollection.git

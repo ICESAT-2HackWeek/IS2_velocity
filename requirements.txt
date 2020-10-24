@@ -5,3 +5,5 @@ h5py
 astropy
 pyproj
 pandas
+ipympl
+pointCollection

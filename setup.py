@@ -14,8 +14,8 @@ setup(
         'h5py',
         'astropy',
         'pyproj',
-        'pandas'
-        #'icepyx',
-        #'pointCollection @ git+https://github.com/smithB/pointCollection.git#egg=pointCollection-1.0.0.0'
+        'pandas',
+        'ipympl',
+        'pointCollection @ git+https://github.com/smithB/pointCollection.git#egg=pointCollection-1.0.0.0'
     ]
 )
