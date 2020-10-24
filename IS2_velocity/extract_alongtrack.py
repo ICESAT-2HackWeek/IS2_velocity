@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import pointCollection as pc
+try:
+    import pointCollection as pc
+except:
+    print('Continuing withough pointCollection')
 import os, pyproj
 
 def add_surface_velocity_to_is2_dict(is2_dict, spatial_extent, path, vel_x, vel_y ):

@@ -1,6 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import glob, pyproj, os, h5py
 import numpy as np
-import pointCollection as pc
+try:
+    import pointCollection as pc
+except:
+    print('Continuing without pointCollection.')
 import matplotlib.pyplot as plt
 
 def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_threshold, spatial_extent, plot_out_location, map_data_root,

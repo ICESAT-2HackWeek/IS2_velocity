@@ -3,5 +3,5 @@ matplotlib
 scipy
 h5py
 astropy
-icepyx
-pointCollection
+pyproj
+pandas
