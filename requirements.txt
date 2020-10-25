@@ -6,4 +6,5 @@ astropy
 pyproj
 pandas
 ipympl
+ipywidgets
 pointCollection
