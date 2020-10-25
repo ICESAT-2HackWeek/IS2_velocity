@@ -7,3 +7,4 @@ pyproj
 pandas
 ipympl
 pointCollection
+jupyterlab
