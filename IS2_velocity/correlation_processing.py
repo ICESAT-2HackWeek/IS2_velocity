@@ -8,6 +8,67 @@ from astropy.time import Time
 import h5py,pyproj
 from IS2_velocity.extract_alongtrack import get_measures_along_track_velocity
 
+
+
+"""
+    # make a monotonically increasing x vector
+    # assumes dx = 20 exactly, so be carefull referencing back
+    ind = seg_ids - np.nanmin(seg_ids) # indices starting at zero, using the segment_id field, so any skipped segment will be kept in correct location
+    # TASK: Change dx to depend on data loaded, not be hard coded as 20 (as in line below)
+    x_full = np.arange(np.max(ind)+1) * 20 + x_atc_tmp[0]
+    h_full = np.zeros(np.max(ind)+1) + np.NaN
+    h_full[ind] = h_li_tmp
+    lats_full = np.zeros(np.shape(x_full)) * np.nan
+    lats_full[ind] = lats_tmp
+    lons_full = np.zeros(np.shape(x_full)) * np.nan
+    lons_full[ind] = lons_tmp
+    x_ps_full = np.zeros(np.shape(x_full)) * np.nan
+    x_ps_full[ind] = x_ps_tmp
+    y_ps_full = np.zeros(np.shape(x_full)) * np.nan
+    y_ps_full[ind] = y_ps_tmp
+
+    ## save the segment id's themselves, with gaps filled in
+    segment_ids[cycle][beam] = np.zeros(np.max(ind)+1) + np.NaN
+    segment_ids[cycle][beam][ind] = seg_ids
+
+
+    x_atc[cycle][beam] = x_full
+    h_li_raw[cycle][beam] = h_full # preserves nan values
+    lons[cycle][beam] = lons_full
+    lats[cycle][beam] = lats_full
+    x_ps[cycle][beam] = x_ps_full
+    y_ps[cycle][beam] = y_ps_full
+
+    ### interpolate nans in pandas
+    # put in dataframe for just this step; eventually rewrite to use only dataframes?
+    data = {'x_full': x_full, 'h_full': h_full}
+    df = pd.DataFrame(data, columns = ['x_full','h_full'])
+    #df.plot(x='x_full',y='h_full')
+    # linear interpolation for now
+    df['h_full'].interpolate(method = 'linear', inplace = True)
+    h_full_interp = df['h_full'].values
+    h_li_raw_NoNans[cycle][beam] = h_full_interp # has filled nan values
+
+    ### Apply any filters; differentiate
+    dx = np.median(x_full[1:] - x_full[:-1])
+    if filter_type == 'running_average':
+        if running_avg_window == None:
+            running_avg_window = 100
+
+        h_filt = filt(x1 = x_full, h1 = h_full_interp, dx = dx, filter_type = 'running_average', running_avg_window = running_avg_window)
+        h_li[cycle][beam] = h_filt
+
+        # differentiate that section of data
+        h_diff = differentiate(x_full, h_filt) #(h_filt[1:] - h_filt[0:-1]) / (x_full[1:] - x_full[0:-1])
+    elif filter_type == None:
+        h_li[cycle][beam] = h_full_interp
+        h_diff = differentiate(x_full, h_full_interp) # (h_full_interp[1:] - h_full_interp[0:-1]) / (x_full[1:] - x_full[0:-1])
+
+    h_li_diff[cycle][beam] = h_diff
+"""
+
+
+
 def fill_seg_ids(x_in,h_in,seg_ids,dx=20):
     r"""Fill the along-track vector so that there are no skipped points
 
@@ -199,22 +260,15 @@ def calculate_velocity_single_beam(x_atc,cycle1,cycle2,beam,search_width,segment
             cycletmp = cycle2
         elif cycle_n == 1:
             cycletmp = cycle1
-        # n_segments_this_track = (len(x_atc[cycletmp][beam]) - 2 * search_width/dx) / (along_track_step/dx)
 
         ### Generate the x1s vector, in the case that the repeat tracks don't start in the same place
         x1s = x_atc[cycletmp][beam][
               int(search_width / dx) + 1:-int(segment_length / dx) - int(search_width / dx):int(along_track_step / dx)]
-        #### ! this line updated 2020 07 23
-        # x1s = x_atc[cycletmp][beam][int(search_width/dx)+1::int(search_width/dx)]
-        # start at search_width/dx in, so the code never tries to get data outside the edges of this rgt
-        # add 1 bc the data are differentiated, and h_li_diff is therefore one point shorter
 
     elif min_x_atc_cycle1 == min_x_atc_cycle2:  # doesn't matter which cycle
         ### Generate the x1s vector, in the case that the repeat tracks do start in the same place
         x1s = x_atc[cycle1][beam][
               int(search_width / dx) + 1:-int(segment_length / dx) - int(search_width / dx):int(along_track_step / dx)]
-        #### ! this line updated 2020 07 23
-        # x1s = x_atc[cycle1][beam][int(search_width/dx)+1::int(search_width/dx)]
 
     ### Determine xend, where the x1s vector ends: smaller value for both beams, if different
     max_x_atc_cycle1 = x_atc[cycle1][beam][-1] - search_width / dx
