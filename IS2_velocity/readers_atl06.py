@@ -20,7 +20,7 @@ def load_data_by_rgt(rgt, path_to_data, product, format = 'hdf5',
     format, ex 'hdf5'
     """
 
-    variables = ['x_atc','times','min_seg_ids','h_li','latitude','longitude','x','y']
+    variables = ['x_atc','times','segment_ids','min_seg_ids','h_li','latitude','longitude','x','y']
 
     ### extract data from all available cycles
     D_out = {}
@@ -46,12 +46,12 @@ def load_data_by_rgt(rgt, path_to_data, product, format = 'hdf5',
                         # Times
                         D_out['times'][cycle][beam] = Di[filename]['data_start_utc']
                         # segment ids:
-                        seg_ids = Di[filename]['segment_id']
-                        D_out['min_seg_ids'][cycle][beam] = seg_ids[0]
+                        D_out['segment_ids'][cycle][beam] = Di[filename]['segment_id']
+                        D_out['min_seg_ids'][cycle][beam] = Di[filename]['segment_id'][0]
 
                         # extract h_li and x_atc, and lat/lons for that section
                         for var in variables:
-                            if var in ['times','min_seg_ids']:
+                            if var in ['times','min_seg_ids','segment_ids']:
                                 continue
                             D_out[var][cycle][beam] = Di[filename][var]
 

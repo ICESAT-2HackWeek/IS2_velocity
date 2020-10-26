@@ -3,146 +3,16 @@
 
 import numpy as np
 from scipy.signal import correlate,detrend
-import glob
 from astropy.time import Time
-import h5py,pyproj
-from IS2_velocity.extract_alongtrack import get_measures_along_track_velocity
 
-
-
-"""
-    # make a monotonically increasing x vector
-    # assumes dx = 20 exactly, so be carefull referencing back
-    ind = seg_ids - np.nanmin(seg_ids) # indices starting at zero, using the segment_id field, so any skipped segment will be kept in correct location
-    # TASK: Change dx to depend on data loaded, not be hard coded as 20 (as in line below)
-    x_full = np.arange(np.max(ind)+1) * 20 + x_atc_tmp[0]
-    h_full = np.zeros(np.max(ind)+1) + np.NaN
-    h_full[ind] = h_li_tmp
-    lats_full = np.zeros(np.shape(x_full)) * np.nan
-    lats_full[ind] = lats_tmp
-    lons_full = np.zeros(np.shape(x_full)) * np.nan
-    lons_full[ind] = lons_tmp
-    x_ps_full = np.zeros(np.shape(x_full)) * np.nan
-    x_ps_full[ind] = x_ps_tmp
-    y_ps_full = np.zeros(np.shape(x_full)) * np.nan
-    y_ps_full[ind] = y_ps_tmp
-
-    ## save the segment id's themselves, with gaps filled in
-    segment_ids[cycle][beam] = np.zeros(np.max(ind)+1) + np.NaN
-    segment_ids[cycle][beam][ind] = seg_ids
-
-
-    x_atc[cycle][beam] = x_full
-    h_li_raw[cycle][beam] = h_full # preserves nan values
-    lons[cycle][beam] = lons_full
-    lats[cycle][beam] = lats_full
-    x_ps[cycle][beam] = x_ps_full
-    y_ps[cycle][beam] = y_ps_full
-
-    ### interpolate nans in pandas
-    # put in dataframe for just this step; eventually rewrite to use only dataframes?
-    data = {'x_full': x_full, 'h_full': h_full}
-    df = pd.DataFrame(data, columns = ['x_full','h_full'])
-    #df.plot(x='x_full',y='h_full')
-    # linear interpolation for now
-    df['h_full'].interpolate(method = 'linear', inplace = True)
-    h_full_interp = df['h_full'].values
-    h_li_raw_NoNans[cycle][beam] = h_full_interp # has filled nan values
-
-    ### Apply any filters; differentiate
-    dx = np.median(x_full[1:] - x_full[:-1])
-    if filter_type == 'running_average':
-        if running_avg_window == None:
-            running_avg_window = 100
-
-        h_filt = filt(x1 = x_full, h1 = h_full_interp, dx = dx, filter_type = 'running_average', running_avg_window = running_avg_window)
-        h_li[cycle][beam] = h_filt
-
-        # differentiate that section of data
-        h_diff = differentiate(x_full, h_filt) #(h_filt[1:] - h_filt[0:-1]) / (x_full[1:] - x_full[0:-1])
-    elif filter_type == None:
-        h_li[cycle][beam] = h_full_interp
-        h_diff = differentiate(x_full, h_full_interp) # (h_full_interp[1:] - h_full_interp[0:-1]) / (x_full[1:] - x_full[0:-1])
-
-    h_li_diff[cycle][beam] = h_diff
-"""
-
-
-
-def fill_seg_ids(x_in,h_in,seg_ids,dx=20):
-    r"""Fill the along-track vector so that there are no skipped points
-
-    Parameters
-    ------
-    x_in : array
-           along-track distance
-    h_in : array
-           along-track elevation
-    seg_ids : array
-              segment ids as imported with atl06_to_dict function
-    dx : float; default 20
-         step between points (20 m is the default for atl06)
-
-    Output
-    ------
-    x_full : array
-             filled array of along-track distance
-    h_full : array
-             filled array of alont-track elevation
-    """
-
-    # make a monotonically increasing x vector
-    ind = seg_ids - np.nanmin(seg_ids) # indices starting at zero, using the segment_id field, so any skipped segment will be kept in correct location
-    x_full = np.arange(np.max(ind)+1) * dx + x_in[0]
-    h_full = np.zeros(np.max(ind)+1) + np.NaN
-    h_full[ind] = h_in
-
-    return x_full,h_full
 
 # -------------------------------------------------------------------------------------------
-
-def filt(x1, h1, dx, filter_type = 'running_average', running_avg_window = None):
-    """
-
-    :param x1:
-    :param h1: Land ice height vector. Must be resampled to constant spacing
-    :param dx:
-    :param type:
-    :param running_avg_window:
-    :return:
-    """
-    if filter_type == 'running_average': #
-        if not running_avg_window: # if no window size was given, run a default 100 m running average smoother
-            running_avg_window = 100
-        dx = np.median(x1[1:] - x1[:-1])
-        filt = np.ones(int(np.round(running_avg_window / dx)))
-        h_filt = (1/len(filt)) * np.convolve(filt, h1, mode = 'same')
-
-    # TASK: add bandpass, highpass
-    else:
-        h_filt = h1
-    return h_filt
-
-# -------------------------------------------------------------------------------------------
-
-def differentiate(x_in, h_in):
-    """
-
-    :param x_in:
-    :param h_in: Land ice height vector. Must be resampled to constant spacing
-    :return:
-    """
-    dh = np.gradient(h_in, x_in)
-    return dh
-
-# -------------------------------------------------------------------------------------------
-def time_diff(D1,D2):
+def time_diff(data,cycle1,cycle2,beam='gt1l'):
     r"""Get the time difference between two cycles; units of days
 
     Parameters
     ------
-    D1 : Dictionary 1
-    D2 : Dictionary 2
+    data : Dictionary 1
 
     Output
     ------
@@ -151,8 +21,8 @@ def time_diff(D1,D2):
     """
 
     # get time strings
-    t1_string = D1['data_start_utc'].astype(str) #figure out later if just picking the first one it ok
-    t2_string = D2['data_start_utc'].astype(str) #figure out later if just picking hte first one it ok
+    t1_string = data['times'][cycle1][beam]
+    t2_string = data['times'][cycle2][beam]
     # use astropy to get time from strings
     t1 = Time(t1_string)
     t2 = Time(t2_string)
@@ -163,7 +33,7 @@ def time_diff(D1,D2):
 
 # -------------------------------------------------------------------------------------------
 
-def calculate_velocities(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_ids, times, beams, cycle1, cycle2, product, segment_length, search_width, along_track_step, max_percent_nans, dx, saving = False, write_out_path = '.', prepend = '', spatial_extent = None, map_data_root=None):
+def calculate_velocities(data, cycle1, cycle2, beams, *args, **kwargs):
     """
 
     :param x_atc:
@@ -183,74 +53,31 @@ def calculate_velocities(rgt, x_atc, h_li_raw, h_li_diff, lats, lons, segment_id
     """
 
     ### Create dictionaries to put info in
-    velocities = {}
-    correlations = {}
-    lags = {}
-    midpoints_x_atc = {}
-    midpoints_lats = {}
-    midpoints_lons = {}
-    midpoints_seg_ids = {}
-    midpoints_xy = {}
-
-    # inside rgt loop
-    velocities[rgt] = {}
-    correlations[rgt] = {}
-    lags[rgt] = {}
-    midpoints_x_atc[rgt] = {}
-    midpoints_lats[rgt] = {}
-    midpoints_lons[rgt] = {}
-    midpoints_seg_ids[rgt] = {}
-    midpoints_xy[rgt] = {}
+    variables = ['velocities','correlations','lags','midpoints_x_atc','midpoints_lats','midpoints_lons',
+            'midpoints_seg_ids']
+    for var in variables:
+        data[var] = {}
 
     ### Determing Elapsed time between cycles
-    t1_string = times[cycle1]['gt1l'][0].astype(str)  # figure out later if just picking hte first one it ok
-    t1 = Time(t1_string)
-    t2_string = times[cycle2]['gt1l'][0].astype(str)  # figure out later if just picking hte first one it ok
-    t2 = Time(t2_string)
-    dt = (t2 - t1).jd  # difference in julian days
-
-    ### Where to save the results:
-    h5_file_out = write_out_path + prepend + '_rgt' + rgt + '.hdf5'
-
-    if saving:
-        ### Save some metadata
-        with h5py.File(h5_file_out, 'w') as f:
-            f['dx'] = dx
-            f['product'] = product
-            f['segment_length'] = segment_length
-            f['search_width'] = search_width
-            f['along_track_step'] = along_track_step
-            f['max_percent_nans'] = max_percent_nans
-            # f['smoothing'] = smoothing
-            # f['smoothing_window_size'] = smoothing_window_size
-            f['process_date'] = str(Time.now().value)
-            f['rgt'] = rgt
+    dt = time_diff(data,cycle1,cycle2)
 
     ### Loop over each beam
     for beam in beams:
-        velocities,correlations,lags,midpoints_x_atc,midpoints_lats,midpoints_lons,midpoints_seg_ids,midpoints_xy = calculate_velocity_single_beam(x_atc,
-                                    cycle1,cycle2,beam,search_width,segment_length,dx,
-                                    velocities,correlations,midpoints_x_atc,midpoints_lats,midpoints_lons,
-                                    midpoints_seg_ids,midpoints_xy,rgt,
-                                    along_track_step,lags,lats,lons,segment_ids,h_li_diff,h_li_raw,
-                                    dt,saving,max_percent_nans,map_data_root,h5_file_out,times,spatial_extent)
+        data  = calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,*args,**kwargs)
 
-    return velocities, correlations, lags, midpoints_x_atc, midpoints_xy, midpoints_lons, midpoints_lats
+    return data
 
 # -------------------------------------------------------------------------------------------
 
-def calculate_velocity_single_beam(x_atc,cycle1,cycle2,beam,search_width,segment_length,dx,
-                                    velocities,correlations,midpoints_x_atc,midpoints_lats,midpoints_lons,
-                                    midpoints_seg_ids,midpoints_xy,rgt,
-                                    along_track_step,lags,lats,lons,segment_ids,h_li_diff,h_li_raw,
-                                    dt,saving,max_percent_nans,map_data_root,h5_file_out,times,spatial_extent):
+def calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,search_width=1000,segment_length=2000,
+                                    max_percent_nans=10,along_track_step=100, dx=20):
     """
     """
 
     ### Determine x1s, which are the x_atc coordinates at which each cut out window begins
     # To be common between both repeats, the first point x1 needs to be the larger first value between repeats
-    min_x_atc_cycle1 = x_atc[cycle1][beam][0]
-    min_x_atc_cycle2 = x_atc[cycle2][beam][0]
+    min_x_atc_cycle1 = data['x_atc_full'][cycle1][beam][0]
+    min_x_atc_cycle2 = data['x_atc_full'][cycle2][beam][0]
 
     # pick out the track that starts at greater x_atc, and use that as x1s vector
     if min_x_atc_cycle1 != min_x_atc_cycle2:
@@ -262,17 +89,17 @@ def calculate_velocity_single_beam(x_atc,cycle1,cycle2,beam,search_width,segment
             cycletmp = cycle1
 
         ### Generate the x1s vector, in the case that the repeat tracks don't start in the same place
-        x1s = x_atc[cycletmp][beam][
+        x1s = data['x_atc_full'][cycletmp][beam][
               int(search_width / dx) + 1:-int(segment_length / dx) - int(search_width / dx):int(along_track_step / dx)]
 
     elif min_x_atc_cycle1 == min_x_atc_cycle2:  # doesn't matter which cycle
         ### Generate the x1s vector, in the case that the repeat tracks do start in the same place
-        x1s = x_atc[cycle1][beam][
+        x1s = data['x_atc_full'][cycle1][beam][
               int(search_width / dx) + 1:-int(segment_length / dx) - int(search_width / dx):int(along_track_step / dx)]
 
     ### Determine xend, where the x1s vector ends: smaller value for both beams, if different
-    max_x_atc_cycle1 = x_atc[cycle1][beam][-1] - search_width / dx
-    max_x_atc_cycle2 = x_atc[cycle2][beam][-1] - search_width / dx
+    max_x_atc_cycle1 = data['x_atc_full'][cycle1][beam][-1] - search_width / dx
+    max_x_atc_cycle2 = data['x_atc_full'][cycle2][beam][-1] - search_width / dx
     smallest_xatc = np.min([max_x_atc_cycle1, max_x_atc_cycle2])
     ixmax = np.where(x1s >= (smallest_xatc - search_width / dx))
     if len(ixmax[0]) >= 1:
@@ -280,57 +107,53 @@ def calculate_velocity_single_beam(x_atc,cycle1,cycle2,beam,search_width,segment
         x1s = x1s[:ixtmp]
 
     ### Create vectors to store results in
-    velocities[rgt][beam] = np.empty_like(x1s)
-    correlations[rgt][beam] = np.empty_like(x1s)
-    lags[rgt][beam] = np.empty_like(x1s)
-    midpoints_x_atc[rgt][beam] = np.empty_like(x1s)
-    midpoints_lats[rgt][beam] = np.empty_like(x1s)
-    midpoints_lons[rgt][beam] = np.empty_like(x1s)
-    midpoints_seg_ids[rgt][beam] = np.empty_like(x1s)
+    variables = ['velocities','correlations','lags','midpoints_x_atc','midpoints_lats','midpoints_lons',
+            'midpoints_seg_ids']
+    for var in variables:
+        data[var][beam] = np.empty_like(x1s)
 
     ### Entire x_atc vectors for both cycles
-    x_full_t1 = x_atc[cycle1][beam]
+    x_full_t1 = data['x_atc_full'][cycle1][beam]
 
     ### Loop over x1s, positions along track that each window starts at
     for xi, x1 in enumerate(x1s):
-
         ### Cut out data: small chunk of data at time t1 (first cycle)
-        ix_x1 = np.arange(len(x_full_t1))[x_full_t1 >= x1][0]  # Index of first point that is greater than x1
+        ix_x1 = np.arange(len(data['x_atc_full'][cycle1][beam]))[data['x_atc_full'][cycle1][beam] >= x1][0]  # Index of first point that is greater than x1
         ix_x2 = ix_x1 + int(
             np.round(segment_length / dx))  # ix_x1 + number of datapoints within the desired segment length
         x_t1 = x_full_t1[ix_x1:ix_x2]  # cut out x_atc values, first cycle
-        lats_t1 = lats[cycle1][beam][ix_x1:ix_x2]  # cut out latitude values, first cycle
-        lons_t1 = lons[cycle1][beam][ix_x1:ix_x2]  # cut out longitude values, first cycle
-        seg_ids_t1 = segment_ids[cycle1][beam][ix_x1:ix_x2]  # cut out segment_ids, first cycle
-        h_li1 = h_li_diff[cycle1][beam][
+        lats_t1 = data['latitude'][cycle1][beam][ix_x1:ix_x2]  # cut out latitude values, first cycle
+        lons_t1 = data['longitude'][cycle1][beam][ix_x1:ix_x2]  # cut out longitude values, first cycle
+        seg_ids_t1 = data['segment_ids'][cycle1][beam][ix_x1:ix_x2]  # cut out segment_ids, first cycle
+        h_li1 = data['h_li_diff'][cycle1][beam][
                 ix_x1 - 1:ix_x2 - 1]  # cut out land ice height values, first cycle; start 1 index earlier because
+        # the h_li_diff data are differentiated, and therefore one sample shorter
+
+        ### Cut out data: wider chunk of data at time t2 (second cycle)
+        ix_x3 = ix_x1 - int(np.round(search_width / dx))  # extend on earlier end by number of indices in search_width
+        ix_x4 = ix_x2 + int(np.round(search_width / dx))  # extend on later end by number of indices in search_width
+        h_li2 = data['h_li_diff'][cycle2][beam][
+                ix_x3 - 1:ix_x4 - 1]  # cut out land ice height values, second cycle; start 1 index earlier because
         # the h_li_diff data are differentiated, and therefore one sample shorter
 
         # Find segment midpoints; this is the position where we will assign the velocity measurement from each window
         n = len(x_t1)
         midpt_ix = int(np.floor(n / 2))
-        midpoints_x_atc[rgt][beam][xi] = x_t1[midpt_ix]
-        midpoints_lats[rgt][beam][xi] = lats_t1[midpt_ix]
-        midpoints_lons[rgt][beam][xi] = lons_t1[midpt_ix]
-        midpoints_seg_ids[rgt][beam][xi] = seg_ids_t1[midpt_ix]
-
-        ### Cut out data: wider chunk of data at time t2 (second cycle)
-        ix_x3 = ix_x1 - int(np.round(search_width / dx))  # extend on earlier end by number of indices in search_width
-        ix_x4 = ix_x2 + int(np.round(search_width / dx))  # extend on later end by number of indices in search_width
-        h_li2 = h_li_diff[cycle2][beam][
-                ix_x3 - 1:ix_x4 - 1]  # cut out land ice height values, second cycle; start 1 index earlier because
-        # the h_li_diff data are differentiated, and therefore one sample shorter
+        data['midpoints_x_atc'][beam][xi] = x_t1[midpt_ix]
+        data['midpoints_lats'][beam][xi] = lats_t1[midpt_ix]
+        data['midpoints_lons'][beam][xi] = lons_t1[midpt_ix]
+        data['midpoints_seg_ids'][beam][xi] = seg_ids_t1[midpt_ix]
 
         ### Determine number of nans in each data chunk
-        n_nans1 = np.sum(np.isnan(h_li_raw[cycle1][beam][ix_x1:ix_x2]))
-        n_nans2 = np.sum(np.isnan(h_li_raw[cycle2][beam][ix_x3:ix_x4]))
+        n_nans1 = np.sum(np.isnan(data['h_li'][cycle1][beam][ix_x1:ix_x2]))
+        n_nans2 = np.sum(np.isnan(data['h_li'][cycle2][beam][ix_x3:ix_x4]))
 
         ### Only process if there are fewer than 10% nans in either data chunk:
         if not (n_nans1 / len(h_li1) <= max_percent_nans / 100) and (n_nans2 / len(h_li2) <= max_percent_nans / 100):
             ### If there are too many nans, just save a nan
-            velocities[rgt][beam][xi] = np.nan
-            correlations[rgt][beam][xi] = np.nan
-            lags[rgt][beam][xi] = np.nan
+            data['velocities'][beam][xi] = np.nan
+            data['correlations'][beam][xi] = np.nan
+            data['lags'][beam][xi] = np.nan
         else:
             # Detrend both chunks of data
             h_li1 = detrend(h_li1, type='linear')
@@ -362,33 +185,11 @@ def calculate_velocity_single_beam(x_atc,cycle1,cycle2,beam,search_width,segment
             ix_peak = np.arange(len(corr_normed))[corr_normed == np.nanmax(corr_normed)][0]
 
             ### Save correlation coefficient, best lag, velocity, etc at the location of peak correlation coefficient
-            velocities[rgt][beam][xi] = shift_vec[ix_peak] / (dt / 365)
-            correlations[rgt][beam][xi] = corr_normed[ix_peak]
-            lags[rgt][beam][xi] = lagvec[ix_peak]
+            data['velocities'][beam][xi] = shift_vec[ix_peak] / (dt / 365)
+            data['correlations'][beam][xi] = corr_normed[ix_peak]
+            data['lags'][beam][xi] = lagvec[ix_peak]
 
-    ### Output xy locations of midpoints as well
-    midpoints_xy[rgt][beam] = np.array(pyproj.Proj(3031)(midpoints_lons[rgt][beam], midpoints_lats[rgt][beam]))
-    #extract measures veloc outside of this loop
-
-    if saving:
-        measures_Vx_path = glob.glob( map_data_root + '*_Vx.tif')[0]
-        measures_Vy_path = glob.glob( map_data_root + '*_Vy.tif')[0]
-
-        ### Add velocities to hdf5 file for each beam
-        with h5py.File(h5_file_out, 'a') as f:
-            f[beam + '/x_atc'] = midpoints_x_atc[rgt][beam]  # assign x_atc value of half way along the segment
-            f[beam + '/latitudes'] = midpoints_lats[rgt][beam]  # assign x_atc value of half way along the segment
-            f[beam + '/longitudes'] = midpoints_lons[rgt][beam]  # assign x_atc value of half way along the segment
-            f[beam + '/velocities'] = velocities[rgt][beam]  # assign x_atc value of half way along the segment
-            f[beam + '/correlation_coefficients'] = correlations[rgt][beam]  # assign x_atc value of half way along the segment
-            f[beam + '/best_lags'] = lags[rgt][beam]  # assign x_atc value of half way along the segment
-            f[beam + '/segment_ids'] = midpoints_seg_ids[rgt][beam]
-            f[beam + '/first_cycle_time'] = str(Time(times[cycle1][beam][0]))
-            f[beam + '/second_cycle_time'] = str(Time(times[cycle2][beam][0]))
-            f[beam + '/Measures_v_along'] = get_measures_along_track_velocity(midpoints_xy[rgt][beam][0], midpoints_xy[rgt][beam][1], spatial_extent,
-                                                                      measures_Vx_path, measures_Vy_path)
-
-    return velocities,correlations,lags,midpoints_x_atc,midpoints_lats,midpoints_lons,midpoints_seg_ids,midpoints_xy
+    return data
 
 # -------------------------------------------------------------------------------------------
 
@@ -466,6 +267,4 @@ def velocity_old(x_in, dh1, dh2, dt, segment_length=2000, search_width=1000, alo
                 correlations[xi] = correlation_value
 
     return velocities,correlations
-
-# -------------------------------------------------------------------------------------------
 
