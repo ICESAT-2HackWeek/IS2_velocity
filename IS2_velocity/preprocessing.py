@@ -9,17 +9,14 @@ def fill_seg_ids(data,dx=20):
 
     Parameters
     ------
-    x_in : array
-           along-track distance
-    h_in : array
-           along-track elevation
-    seg_ids : array
-              segment ids as imported with atl06_to_dict function
+    data : dict
+        data dictionary
     dx : float; default 20
          step between points (20 m is the default for atl06)
 
     Output
     ------
+    data : dict
     """
 
     variables = ['x_atc_full','h_full','lats_full','lons_full','x_full','y_full']
@@ -57,6 +54,20 @@ def fill_seg_ids(data,dx=20):
 # -------------------------------------------------------------------------------------------
 
 def interpolate_nans(data):
+    r"""Linear interpolation between nan values
+
+    Parameters
+    ------
+    data : dict
+        data dictionary
+
+    Output
+    ------
+    data : dict
+    """
+
+    Warning("Be careful interpolating, linear interpolation could lead to misleading correlations.")
+
     data['h_full_interp'] = {}
     for cycle in data['h_full'].keys():
         data['h_full_interp'][cycle] = {}
@@ -72,14 +83,22 @@ def interpolate_nans(data):
 # -------------------------------------------------------------------------------------------
 
 def filt(data, dx=None, filter_type = 'running_average', running_avg_window = None):
-    """
+    r"""Smoothing filter to remove high-frequency noise
 
-    :param x1:
-    :param h1: Land ice height vector. Must be resampled to constant spacing
-    :param dx:
-    :param type:
-    :param running_avg_window:
-    :return:
+    Parameters
+    ------
+    data : dict
+        data dictionary
+    dx : float; default None
+        spatial step between points; if None use median
+    filter_type : str; default running_average
+        choice on how to filter the data
+    running_avg_window : int
+        window size of the filter (number of samples)
+
+    Output
+    ------
+    data : dict
     """
 
     data['h_filt'] = {}
@@ -103,11 +122,18 @@ def filt(data, dx=None, filter_type = 'running_average', running_avg_window = No
 # -------------------------------------------------------------------------------------------
 
 def differentiate(data,dx=None):
-    """
+    r"""Slope calculation
 
-    :param x_in:
-    :param h_in: Land ice height vector. Must be resampled to constant spacing
-    :return:
+    Parameters
+    ------
+    data : dict
+        data dictionary
+    dx : float; default None
+        spatial step between points; if None use median
+
+    Output
+    ------
+    data : dict
     """
 
     data['h_li_diff'] = {}

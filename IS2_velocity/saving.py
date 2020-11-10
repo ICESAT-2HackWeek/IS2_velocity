@@ -11,6 +11,29 @@ from .extract_alongtrack import get_measures_along_track_velocity
 def save_is2_velocity(data,rgt,write_out_path,prepend,product,map_data_root,
                     cycle1,cycle2,dx,segment_length,search_width,along_track_step,
                     max_percent_nans,spatial_extent):
+    """Save the dictionary as an hdf5 file.
+
+    Parameters
+    ------
+    data : dict
+           data dictionary
+    rgt
+    write_out_path
+    prepend
+    product
+    map_data_root
+    cycle1
+    cycle2
+    dx
+    segment_length
+    search_width
+    along_track_step
+    max_percent_nans
+    spatial_extent
+
+    Output
+    ------
+    """
 
     ### Where to save the results:
     h5_file_out = write_out_path + prepend + '_rgt' + rgt + '.hdf5'

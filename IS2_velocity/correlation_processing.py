@@ -12,7 +12,14 @@ def time_diff(data,cycle1,cycle2,beam='gt1l'):
 
     Parameters
     ------
-    data : Dictionary 1
+    data : dict
+        data dictionary
+    cycle1 : int
+        first cycle to be compared
+    cycle2 : int
+        second cycle to be compared
+    beam : str
+        which beam to compare
 
     Output
     ------
@@ -34,22 +41,23 @@ def time_diff(data,cycle1,cycle2,beam='gt1l'):
 # -------------------------------------------------------------------------------------------
 
 def calculate_velocities(data, cycle1, cycle2, beams, *args, **kwargs):
-    """
+    r"""Calculate velocities by correlating two cycles.
+    Can be done over a list of beams.
 
-    :param x_atc:
-    :param h_li_diff:
-    :param lats:
-    :param lons:
-    :param segment_ids:
-    :param beams:
-    :param cycle1:
-    :param cycle2:
-    :param segment_length:
-    :param search_width:
-    :param along_track_step:
-    :param max_percent_nans:
-    :param dx:
-    :return:
+    Parameters
+    ------
+    data : dict
+        data dictionary
+    cycle1 : int
+        first cycle to be compared
+    cycle2 : int
+        second cycle to be compared
+    beams : list
+        a list of which beam to compare
+
+    Output
+    ------
+    data : dict
     """
 
     ### Create dictionaries to put info in
@@ -71,7 +79,23 @@ def calculate_velocities(data, cycle1, cycle2, beams, *args, **kwargs):
 
 def calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,search_width=1000,segment_length=2000,
                                     max_percent_nans=10,along_track_step=100, dx=20):
-    """
+    r"""Calculate velocities by correlating two cycles.
+    Can be done over a list of beams.
+
+    Parameters
+    ------
+    data : dict
+        data dictionary
+    cycle1 : int
+        first cycle to be compared
+    cycle2 : int
+        second cycle to be compared
+    beams : list
+        a list of which beam to compare
+
+    Output
+    ------
+    data : dict
     """
 
     ### Determine x1s, which are the x_atc coordinates at which each cut out window begins
@@ -190,81 +214,3 @@ def calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,search_width=1000,
             data['lags'][beam][xi] = lagvec[ix_peak]
 
     return data
-
-# -------------------------------------------------------------------------------------------
-
-def velocity_old(x_in, dh1, dh2, dt, segment_length=2000, search_width=1000, along_track_step=100, dx=20, corr_threshold=.65):
-    r"""Calculate along-track velocity by correlating the along-track elevation between repeat acquisitions.
-    Works for a single set of repeat beams
-
-    Parameters
-    ------
-    x_in : array
-           along-track distance
-    dh1 : array
-          surface slope at cycle 1
-    dh2 : array
-          surface slope at cycle 2
-    dt : float
-         time difference between cycles
-    output_xs : array # REMOVED THIS ONE, calculate inside the loop
-                along-track distances at which the velocities will be calculated and output
-    search_width : float
-                   the maximum distance which the stencil array will be moved to look for a good correlation
-    segment_length : float
-                     the length of the array to be correlated
-    dx : float
-         spacing between points in the x array
-    corr_threshold : float
-                     minimum correlation to be considered an acceptable fit
-
-    Output
-    ------
-    velocities : array
-                 calculated velocities corresponding to locations output_xs
-    correlations : array
-                   calculated correlations for each of the velocity points
-    """
-
-    # Generate vector of along window starting positions in the along-track vector
-    x1s = x_in[int(search_width/dx)+1:-int(segment_length/dx) - int(search_width/dx):int(along_track_step/dx)]
-
-    # create output arrays to be filled
-    velocities = np.nan*np.ones_like(x1s)
-    correlations = np.nan*np.ones_like(x1s)
-
-    # iterate over all the output locations
-    for xi,x_start in enumerate(x1s):
-        # find indices for the stencil
-        idx1 = np.argmin(abs(x_in-x_start))
-        idx2 = idx1 + int(np.round(segment_length/dx))
-        # cut out a wider chunk of data at time t2 (second cycle)
-        idx3 = idx1 - int(np.round(search_width/dx)) # offset on earlier end by # indices in search_width
-        idx4 = idx2 + int(np.round(search_width/dx)) # offset on later end by # indices in search_width
-
-        # get the two arrays that will be correlated to one another
-        dh_stencil = dh1[idx1:idx2]
-        dh_wide = dh2[idx3:idx4]
-
-        # correlate old with newer data
-        corr = correlate(dh_stencil, dh_wide, mode = 'valid', method = 'direct')
-        norm_val = np.sqrt(np.sum(dh_stencil**2)*np.sum(dh_wide**2)) # normalize so values range between 0 and 1
-        corr = corr / norm_val
-        lagvec = np.arange(- int(np.round(search_width/dx)), int(search_width/dx) +1,1)# for mode = 'valid'
-        shift_vec = lagvec * dx
-
-        if all(np.isnan(corr)):
-            continue
-        else:
-            correlation_value = np.nanmax(corr)
-            if correlation_value >= corr_threshold:
-                idx_peak = np.arange(len(corr))[corr == correlation_value][0]
-                best_shift = shift_vec[idx_peak]
-                velocities[xi] = best_shift/(dt/365)
-                correlations[xi] = correlation_value
-            else:
-                velocities[xi] = np.nan
-                correlations[xi] = correlation_value
-
-    return velocities,correlations
-
