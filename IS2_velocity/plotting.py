@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import glob, pyproj, os, h5py
+import glob, os, h5py
 import numpy as np
 try:
     import pointCollection as pc
 except:
     print('Continuing without pointCollection.')
 import matplotlib.pyplot as plt
+from pyproj import Proj
+proj_stere = Proj('epsg:3031')
 
 def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_threshold, spatial_extent, plot_out_location, map_data_root,
-                                         velocity_number, epsg, close=False):
+                                         velocity_number, close=False):
     """
 
     :param rgt:
@@ -45,7 +47,7 @@ def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_thres
             lon = spatial_extent[[2, 2, 0, 0, 2]]
 
             # project the coordinates to Antarctic polar stereographic
-            xy = np.array(pyproj.Proj(epsg)(lon, lat))
+            xy = np.array(proj_stere(lon, lat))
             # get the bounds of the projected coordinates
             XR = [np.nanmin(xy[0, :]), np.nanmax(xy[0, :])]
             YR = [np.nanmin(xy[1, :]), np.nanmax(xy[1, :])]
@@ -59,6 +61,11 @@ def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_thres
             pass
 
         with h5py.File(file, 'r') as f:
+            beam = beams[0]
+            lats = f[f'/{beam}/latitudes'][()]
+            lons = f[f'/{beam}/longitudes'][()]
+            meas_v = f[f'/{beam}/Measures_v_along'][()]
+            meas_xy = np.array(proj_stere(lons, lats))
             for ib, beam in enumerate(beams):
                 hax0 = fig.add_subplot(grid[ib, 0])
                 # 1hax1=fig.add_subplot(212)
@@ -70,14 +77,13 @@ def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_thres
                 lons = f[f'/{beam}/longitudes'][()]
                 coeffs = f[f'/{beam}/correlation_coefficients'][()]
                 velocs = f[f'/{beam}/velocities'][()]
-                v_along = f[f'/{beam}/Measures_v_along'][()]
-                xy = np.array(pyproj.proj.Proj(3031)(lons, lats))
+                xy = np.array(proj_stere(lons, lats))
 
                 ixs0 = coeffs <= correlation_threshold
                 ixs = coeffs > correlation_threshold
 
                 h0 = hax0.scatter(xy[0], velocs, 1, coeffs, vmin=0, vmax=1, cmap='viridis')
-                h1 = hax0.plot(xy[0], v_along, 'k-')
+                h1 = hax0.plot(meas_xy[0], meas_v, 'k-')
                 # whether v_along is + or - must depend on ascending vs descending; not done correctly yet
 
                 hax0.set_ylim(-800, 800)
