@@ -12,7 +12,7 @@ from pyproj import Proj
 proj_stere = Proj('epsg:3031')
 
 def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_threshold, spatial_extent, plot_out_location, map_data_root,
-                                         velocity_number, close=False):
+                                         velocity_number, flip_meas_sign=False, close=False):
     """
 
     :param rgt:
@@ -23,8 +23,7 @@ def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_thres
     :param velocity_number:
     :param close:
     :return:
-    """
-    # currently just the first velocity determination, veloc0
+    """ # currently just the first velocity determination, veloc0
     # out_path is where the xcorr results are stored
     # plot_out_location is where to save the plot
     # map_data_root is where the map data are stored, specifically must contain moa_2009_1km.tif for this specific code to work
@@ -66,6 +65,9 @@ def plot_measures_along_track_comparison(rgt, beams, out_path, correlation_thres
             lons = f[f'/{beam}/longitudes'][()]
             meas_v = f[f'/{beam}/Measures_v_along'][()]
             meas_xy = np.array(proj_stere(lons, lats))
+            if flip_meas_sign:
+                meas_v *= -1
+
             for ib, beam in enumerate(beams):
                 hax0 = fig.add_subplot(grid[ib, 0])
                 # 1hax1=fig.add_subplot(212)

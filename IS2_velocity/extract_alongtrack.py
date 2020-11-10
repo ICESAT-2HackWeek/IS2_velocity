@@ -51,20 +51,12 @@ def get_measures(data, spatial_extent, measures_path):
     vy = Measures_vy.interp(x,y)
 
     #Solve for angle to rotate Vy to be along track and Vx to be across track
-    import math
-    xL=abs((x[0])-(x[1]))
-    yL=abs((y[0])-(y[1]))
+    xL = x[1] - x[0]
+    yL = y[1] - y[0]
+    theta = np.arctan(yL/xL)
 
-    #decides if is descending or ascending path
-    if x[0]-x[1] < 0:
-        theta_rad=math.atan(xL/yL)
-        #theta_deg=theta_rad*180/math.pi
-        data['meas_v_along']=vy/math.cos(theta_rad)
-        data['meas_v_across']=vx/math.cos(theta_rad)
-    else:
-        theta_rad=math.atan(xL/yL)
-        #theta_deg=theta_rad*180/math.pi
-        data['meas_v_along']=vy/math.sin(theta_rad)
-        data['meas_v_across']=vx/math.sin(theta_rad)
+    # Do the rotation
+    data['meas_v_along'] = vx*np.cos(theta) + vy*np.cos(np.pi/2.-theta)
+    data['meas_v_across'] = vx*np.sin(theta) - vy*np.sin(np.pi/2.-theta)
 
     return data
