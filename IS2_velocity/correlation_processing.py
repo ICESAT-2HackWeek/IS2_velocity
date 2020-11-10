@@ -100,8 +100,8 @@ def calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,search_width=1000,
 
     ### Determine x1s, which are the x_atc coordinates at which each cut out window begins
     # To be common between both repeats, the first point x1 needs to be the larger first value between repeats
-    min_x_atc_cycle1 = data['x_atc_full'][cycle1][beam][0]
-    min_x_atc_cycle2 = data['x_atc_full'][cycle2][beam][0]
+    min_x_atc_cycle1 = data['x_atc'][cycle1][beam][0]
+    min_x_atc_cycle2 = data['x_atc'][cycle2][beam][0]
 
     # pick out the track that starts at greater x_atc, and use that as x1s vector
     if min_x_atc_cycle1 != min_x_atc_cycle2:
@@ -113,17 +113,17 @@ def calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,search_width=1000,
             cycletmp = cycle1
 
         ### Generate the x1s vector, in the case that the repeat tracks don't start in the same place
-        x1s = data['x_atc_full'][cycletmp][beam][
+        x1s = data['x_atc'][cycletmp][beam][
               int(search_width / dx) + 1:-int(segment_length / dx) - int(search_width / dx):int(along_track_step / dx)]
 
     elif min_x_atc_cycle1 == min_x_atc_cycle2:  # doesn't matter which cycle
         ### Generate the x1s vector, in the case that the repeat tracks do start in the same place
-        x1s = data['x_atc_full'][cycle1][beam][
+        x1s = data['x_atc'][cycle1][beam][
               int(search_width / dx) + 1:-int(segment_length / dx) - int(search_width / dx):int(along_track_step / dx)]
 
     ### Determine xend, where the x1s vector ends: smaller value for both beams, if different
-    max_x_atc_cycle1 = data['x_atc_full'][cycle1][beam][-1] - search_width / dx
-    max_x_atc_cycle2 = data['x_atc_full'][cycle2][beam][-1] - search_width / dx
+    max_x_atc_cycle1 = data['x_atc'][cycle1][beam][-1] - search_width / dx
+    max_x_atc_cycle2 = data['x_atc'][cycle2][beam][-1] - search_width / dx
     smallest_xatc = np.min([max_x_atc_cycle1, max_x_atc_cycle2])
     ixmax = np.where(x1s >= (smallest_xatc - search_width / dx))
     if len(ixmax[0]) >= 1:
@@ -137,12 +137,12 @@ def calculate_velocity_single_beam(data,cycle1,cycle2,beam,dt,search_width=1000,
         data[var][beam] = np.empty_like(x1s)
 
     ### Entire x_atc vectors for both cycles
-    x_full_t1 = data['x_atc_full'][cycle1][beam]
+    x_full_t1 = data['x_atc'][cycle1][beam]
 
     ### Loop over x1s, positions along track that each window starts at
     for xi, x1 in enumerate(x1s):
         ### Cut out data: small chunk of data at time t1 (first cycle)
-        ix_x1 = np.arange(len(data['x_atc_full'][cycle1][beam]))[data['x_atc_full'][cycle1][beam] >= x1][0]  # Index of first point that is greater than x1
+        ix_x1 = np.arange(len(data['x_atc'][cycle1][beam]))[data['x_atc'][cycle1][beam] >= x1][0]  # Index of first point that is greater than x1
         ix_x2 = ix_x1 + int(
             np.round(segment_length / dx))  # ix_x1 + number of datapoints within the desired segment length
         x_t1 = x_full_t1[ix_x1:ix_x2]  # cut out x_atc values, first cycle

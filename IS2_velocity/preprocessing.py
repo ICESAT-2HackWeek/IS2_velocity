@@ -19,35 +19,40 @@ def fill_seg_ids(data,dx=20):
     data : dict
     """
 
-    variables = ['x_atc_full','h_full','lats_full','lons_full','x_full','y_full']
-    for var in variables:
-        data[var] = {}
-
     # make a monotonically increasing x vector
     for cycle in data['x_atc'].keys():
-        for var in variables:
-            data[var][cycle] = {}
         for beam in data['x_atc'][cycle].keys():
             # indices starting at zero, using the segment_id field, so any skipped segment will be kept in correct location
             seg_ids = data['segment_ids'][cycle][beam]
             ind = seg_ids - np.nanmin(seg_ids)
 
-            data['x_atc_full'][cycle][beam] = np.arange(np.max(ind)+1) * dx + data['x_atc'][cycle][beam][0]
-            data['h_full'][cycle][beam] = np.zeros(np.max(ind)+1) + np.NaN
-            data['h_full'][cycle][beam][ind] = data['h_li'][cycle][beam]
+            data['x_atc'][cycle][beam] = np.arange(np.max(ind)+1) * dx + data['x_atc'][cycle][beam][0]
 
-            data['lats_full'][cycle][beam] = np.zeros(np.shape(data['x_atc_full'][cycle][beam])) * np.nan
-            data['lats_full'][cycle][beam][ind] = data['latitude'][cycle][beam]
-            data['lons_full'][cycle][beam] = np.zeros(np.shape(data['x_atc_full'][cycle][beam])) * np.nan
-            data['lons_full'][cycle][beam][ind] = data['longitude'][cycle][beam]
-            data['x_full'][cycle][beam] = np.zeros(np.shape(data['x_atc_full'][cycle][beam])) * np.nan
-            data['x_full'][cycle][beam][ind] = data['x'][cycle][beam]
-            data['y_full'][cycle][beam] = np.zeros(np.shape(data['x_atc_full'][cycle][beam])) * np.nan
-            data['y_full'][cycle][beam][ind] = data['y'][cycle][beam]
+            h_li_hold = np.zeros(np.max(ind)+1) + np.NaN
+            h_li_hold[ind] = data['h_li'][cycle][beam]
+            data['h_li'][cycle][beam] = h_li_hold
+
+            lats_hold = np.zeros(np.shape(data['x_atc'][cycle][beam])) * np.nan
+            lats_hold[ind] = data['latitude'][cycle][beam]
+            data['latitude'][cycle][beam] = lats_hold
+
+            lons_hold = np.zeros(np.shape(data['x_atc'][cycle][beam])) * np.nan
+            lons_hold[ind] = data['longitude'][cycle][beam]
+            data['longitude'][cycle][beam] = lons_hold
+
+            xs_hold = np.zeros(np.shape(data['x_atc'][cycle][beam])) * np.nan
+            xs_hold[ind] = data['x'][cycle][beam]
+            data['x'][cycle][beam] = xs_hold
+
+            ys_hold = np.zeros(np.shape(data['x_atc'][cycle][beam])) * np.nan
+            ys_hold[ind] = data['y'][cycle][beam]
+            data['y'][cycle][beam] = ys_hold
 
             ## save the segment id's themselves, with gaps filled in
             data['segment_ids'][cycle][beam] = np.zeros(np.max(ind)+1) + np.NaN
             data['segment_ids'][cycle][beam][ind] = seg_ids
+
+    data['flags'].append('fill_seg_ids')
 
     return data
 
@@ -68,16 +73,16 @@ def interpolate_nans(data):
 
     Warning("Be careful interpolating, linear interpolation could lead to misleading correlations.")
 
-    data['h_full_interp'] = {}
-    for cycle in data['h_full'].keys():
-        data['h_full_interp'][cycle] = {}
-        for beam in data['h_full'][cycle].keys():
+    for cycle in data['h_li'].keys():
+        for beam in data['h_li'][cycle].keys():
             ### interpolate nans in pandas
-            interp_hold = {'x_atc_full': data['x_atc_full'][cycle][beam], 'h_full': data['h_full'][cycle][beam]}
-            df = pd.DataFrame(interp_hold, columns = ['x_atc_full','h_full'])
+            interp_hold = {'x_atc': data['x_atc'][cycle][beam], 'h_li': data['h_li'][cycle][beam]}
+            df = pd.DataFrame(interp_hold, columns = ['x_atc','h_li'])
             # linear interpolation for now
-            df['h_full'].interpolate(method = 'linear', inplace = True)
-            data['h_full_interp'][cycle][beam] = df['h_full'].values
+            df['h_li'].interpolate(method = 'linear', inplace = True)
+            data['h_li'][cycle][beam] = df['h_li'].values
+
+    data['flags'].append('interp_nans')
     return data
 
 # -------------------------------------------------------------------------------------------
@@ -101,21 +106,21 @@ def filt(data, dx=None, filter_type = 'running_average', running_avg_window = No
     data : dict
     """
 
-    data['h_filt'] = {}
-    for cycle in data['h_full_interp'].keys():
-        data['h_filt'][cycle] = {}
-        for beam in data['h_full_interp'][cycle].keys():
+    for cycle in data['h_li'].keys():
+        for beam in data['h_li'][cycle].keys():
             if filter_type == 'running_average': #
                 if not running_avg_window: # if no window size was given, run a default 100 m running average smoother
                     running_avg_window = 100
                 if dx is None:
-                    dx = np.nanmedian(data['x_atc_full'][cycle][beam][1:] - data['x_atc_full'][cycle][beam][:-1])
+                    dx = np.nanmedian(data['x_atc'][cycle][beam][1:] - data['x_atc'][cycle][beam][:-1])
                 filt = np.ones(int(np.round(running_avg_window / dx)))
-                data['h_filt'][cycle][beam] = (1/len(filt)) * np.convolve(filt, data['h_full_interp'][cycle][beam], mode = 'same')
+                data['h_li'][cycle][beam] = (1/len(filt)) * np.convolve(filt, data['h_li'][cycle][beam], mode = 'same')
 
-            #TODO: add bandpass, highpass
+            #TODO: add options bandpass, highpass
             else:
-                data['h_filt'][cycle][beam] = data['h_full_interp'][cycle][beam]
+                data['h_li'][cycle][beam] = data['h_li'][cycle][beam]
+
+    data['flags'].append('filt_'+filter_type)
 
     return data
 
@@ -137,11 +142,14 @@ def differentiate(data,dx=None):
     """
 
     data['h_li_diff'] = {}
-    for cycle in data['h_filt'].keys():
+    for cycle in data['h_li'].keys():
         data['h_li_diff'][cycle] = {}
-        for beam in data['h_filt'][cycle].keys():
+        for beam in data['h_li'][cycle].keys():
             if dx is None:
-                dx = np.nanmedian(data['x_atc_full'][cycle][beam][1:] - data['x_atc_full'][cycle][beam][:-1])
-            data['h_li_diff'][cycle][beam] = np.gradient(data['h_filt'][cycle][beam], dx)
+                dx = np.nanmedian(data['x_atc'][cycle][beam][1:] - data['x_atc'][cycle][beam][:-1])
+            data['h_li_diff'][cycle][beam] = np.gradient(data['h_li'][cycle][beam], dx)
+
+    data['flags'].append('differentiate')
+
     return data
 

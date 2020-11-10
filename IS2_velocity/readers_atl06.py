@@ -60,6 +60,7 @@ def load_data_by_rgt(rgt, path_to_data, product, format = 'hdf5',
                     print(f'file {filename} encountered error {e}')
                     error_count += 1
 
+    D_out['flags'] = []
     print('Loaded data from cycles: ' + ','.join(cycles_this_rgt),'for rgt:',rgt)
 
     return D_out

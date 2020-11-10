@@ -55,8 +55,8 @@ def save_is2_velocity(data,rgt,write_out_path,prepend,product,map_data_root,
 
         ### Output xy locations of midpoints as well
         midpoints_xy = np.array(pyproj.Proj(3031)(data['midpoints_lons'][beam], data['midpoints_lats'][beam]))
-        #extract measures veloc outside of this loop
 
+        #extract measures veloc outside of this loop
         measures_Vx_path = glob.glob( map_data_root + '*_Vx.tif')[0]
         measures_Vy_path = glob.glob( map_data_root + '*_Vy.tif')[0]
 

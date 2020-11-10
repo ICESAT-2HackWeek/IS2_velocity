@@ -24,8 +24,6 @@ def add_surface_velocity_to_is2_dict(is2_dict, spatial_extent, path, vel_x, vel_
     spatial_extent = np.array([spatial_extent])
     lat=spatial_extent[[1, 3, 3, 1, 1]]
     lon=spatial_extent[[2, 2, 0, 0, 2]]
-    print(lat)
-    print(lon)
     # project the coordinates to Antarctic polar stereographic
     xy=np.array(pyproj.Proj(3031)(lon, lat))
     # get the bounds of the projected coordinates
@@ -89,9 +87,6 @@ def get_measures_along_track_velocity(x_ps_beam, y_ps_beam , spatial_extent, vel
     XR=[np.nanmin(xy[0,:]), np.nanmax(xy[0,:])]
     YR=[np.nanmin(xy[1,:]), np.nanmax(xy[1,:])]
 
-    #Measures_vx=pc.grid.data().from_geotif(os.path.join(data_root,vel_x), bounds=[XR, YR])
-    #Measures_vy=pc.grid.data().from_geotif(os.path.join(data_root,vel_y), bounds=[XR, YR])
-
     Measures_vx=pc.grid.data().from_geotif(vel_x_path, bounds=[XR, YR])
     Measures_vy=pc.grid.data().from_geotif(vel_y_path, bounds=[XR, YR])
 
@@ -103,16 +98,13 @@ def get_measures_along_track_velocity(x_ps_beam, y_ps_beam , spatial_extent, vel
     xL=abs((x_ps_beam[0])-(x_ps_beam[1]))
     yL=abs((y_ps_beam[0])-(y_ps_beam[1]))
 
-    #decides if is descending or ascending path
+    # decides if is descending or ascending path
     if x_ps_beam[0]-x_ps_beam[1] < 0:
-
         theta_rad=math.atan(xL/yL)
         #theta_deg=theta_rad*180/math.pi
         v_along=vy/math.cos(theta_rad)
         #v_across=vx/math.cos(theta_rad)
-
     else:
-
         theta_rad=math.atan(xL/yL)
         #theta_deg=theta_rad*180/math.pi
         v_along=vy/math.sin(theta_rad)
@@ -120,4 +112,3 @@ def get_measures_along_track_velocity(x_ps_beam, y_ps_beam , spatial_extent, vel
 
     #Vdiff=vy-v_along
     return v_along
-
