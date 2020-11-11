@@ -20,7 +20,7 @@ def get_measures(data, spatial_extent, measures_path):
         bounding box of the interest area in the format
         (e.g. [-65, -86, -55, -81] == [min_lon, min_lat, max_lon, max_lat])
     measures_path : str
-        local path to velocity data
+        local path to velocity data where Vx and Vy are located (format Vx.tif and Vy.tif)
 
     Output
     ------
@@ -60,3 +60,28 @@ def get_measures(data, spatial_extent, measures_path):
     data['meas_v_across'] = vx*np.sin(theta) - vy*np.sin(np.pi/2.-theta)
 
     return data
+
+# =============================================================================
+#     import math
+#     xL=abs((is2_dict['x'][0])-(is2_dict['x'][1]))
+#     yL=abs((is2_dict['y'][0])-(is2_dict['y'][1]))
+# 
+#     #decides if is descending or ascending path
+#     if is2_dict['x'][0]-is2_dict['x'][1] < 0:
+# 
+#         theta_rad=math.atan(xL/yL)
+#         #theta_deg=theta_rad*180/math.pi
+#         is2_dict['v_along']=vy/math.cos(theta_rad)
+#         is2_dict['v_across']=vx/math.cos(theta_rad)
+# 
+#     else:
+# 
+#         theta_rad=math.atan(xL/yL)
+#         #theta_deg=theta_rad*180/math.pi
+#         is2_dict['v_along']=vy/math.sin(theta_rad)
+#         is2_dict['v_across']=vx/math.sin(theta_rad)
+# 
+#     return is2_dict
+# =============================================================================
+
+
