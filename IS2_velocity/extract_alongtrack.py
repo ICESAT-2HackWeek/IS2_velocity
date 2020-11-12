@@ -53,9 +53,11 @@ def get_measures(data, spatial_extent, measures_path):
         vy = Measures_vy.interp(x,y)
 
         #Solve for angle to rotate Vy to be along track and Vx to be across track
-        xL = x[1] - x[0]
-        yL = y[1] - y[0]
+        xL = x[1:] - x[:-1]
+        yL = y[1:] - y[:-1]
         theta = np.arctan(yL/xL)
+        # Repeat the last angle so that the arrays are the same size.
+        theta = np.append(theta,np.arctan(yL[-1]/xL[-1]))
 
         # Do the rotation
         data['meas_v_along'][beam] = vx*np.cos(theta) + vy*np.cos(np.pi/2.-theta)
