@@ -60,5 +60,5 @@ def save_is2_velocity(data,rgt,write_out_path,prepend,product,map_data_root,
             f[beam + '/segment_ids'] = data['midpoints_seg_ids'][beam]
             f[beam + '/first_cycle_time'] = str(Time(data['times'][cycle1][beam][0]))
             f[beam + '/second_cycle_time'] = str(Time(data['times'][cycle2][beam][0]))
-            f[beam + '/Measures_v_along'] = data['meas_v_along']
-            f[beam + '/Measures_v_across'] = data['meas_v_across']
+            f[beam + '/Measures_v_along'] = data['meas_v_along'][beam]
+            f[beam + '/Measures_v_across'] = data['meas_v_across'][beam]
