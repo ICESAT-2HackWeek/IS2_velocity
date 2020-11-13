@@ -41,7 +41,7 @@ def time_diff(data,cycle1,cycle2,beam='gt1l'):
 # -------------------------------------------------------------------------------------------
 
 def calculate_velocities(data, cycle1, cycle2, beams, search_width=1000, segment_length=2000,
-                                    max_percent_nans=10, along_track_step=100, dx=20, *args, **kwargs):
+                                    max_percent_nans=10, along_track_step=100, dx=20):
     r"""Calculate velocities by correlating two cycles.
     Can be done over a list of beams.
 
