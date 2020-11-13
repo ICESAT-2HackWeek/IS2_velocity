@@ -138,11 +138,12 @@ def determine_x1s(data, cycle1, cycle2, beam, search_width=1000, segment_length=
     # pick out the track that starts at greater x_atc, and use that as x1s vector
     if min_x_atc_cycle1 != min_x_atc_cycle2:
         x1 = np.nanmax([min_x_atc_cycle1, min_x_atc_cycle2])
+        # determine which cycle starts at greater x_atc
         cycle_n = np.arange(0, 2)[[min_x_atc_cycle1, min_x_atc_cycle2] == x1][0]
         if cycle_n == 0:
-            cycletmp = cycle2
-        elif cycle_n == 1:
             cycletmp = cycle1
+        elif cycle_n == 1:
+            cycletmp = cycle2
 
         ### Generate the x1s vector, in the case that the repeat tracks don't start in the same place
         x1s = data['x_atc'][cycletmp][beam][
@@ -179,6 +180,7 @@ def correlate_single_x1(x1, data, cycle1, cycle2, beam, search_width=1000, segme
     :param dx:
     :return:
     """
+
     ### Determing Elapsed time between cycles
     dt = time_diff(data,cycle1,cycle2)
 
@@ -196,8 +198,7 @@ def correlate_single_x1(x1, data, cycle1, cycle2, beam, search_width=1000, segme
     npts_short = int( np.round(segment_length / dx)) # how many data points in the later, shorter vector to correlate
     npts_extra_long = int(np.round(search_width / dx)) # how many extra datapoints before/after in the earlier, longer vector to correlate
 
-    ix_x1 = np.arange(len(data['x_atc'][cycle1][beam]))[data['x_atc'][cycle1][beam] >= x1][
-        0]  # Index of first point that is greater than x1
+    ix_x1 = np.arange(len(data['x_atc'][cycle1][beam]))[data['x_atc'][cycle1][beam] >= x1][0]  # Index of first point that is greater than x1
     ix_x2 = ix_x1 + npts_short  # ix_x1 + number of datapoints within the desired segment length
     x_t1 = x_full_t1[ix_x1:ix_x2]  # cut out x_atc values, first cycle
     lats_t1 = data['latitude'][cycle1][beam][ix_x1:ix_x2]  # cut out latitude values, first cycle
@@ -210,8 +211,7 @@ def correlate_single_x1(x1, data, cycle1, cycle2, beam, search_width=1000, segme
     ### Cut out data: wider chunk of data at time t2 (second cycle)
     ix_x3 = ix_x1 - npts_extra_long  # extend on earlier end by number of indices in search_width
     ix_x4 = ix_x2 + npts_extra_long  # extend on later end by number of indices in search_width
-    h_li2 = data['h_li_diff'][cycle2][beam][
-            ix_x3 - 1:ix_x4 - 1]  # cut out land ice height values, second cycle; start 1 index earlier because
+    h_li2 = data['h_li_diff'][cycle2][beam][ix_x3-1:ix_x4-1]  # cut out land ice height values, second cycle; start 1 index earlier because
     # the h_li_diff data are differentiated, and therefore one sample shorter
 
     # Find segment midpoints; this is the position where we will assign the velocity measurement from each window
@@ -223,11 +223,11 @@ def correlate_single_x1(x1, data, cycle1, cycle2, beam, search_width=1000, segme
     data['midpoints_seg_ids'][beam][xi] = seg_ids_t1[midpt_ix]
 
     ### Determine number of nans in each data chunk
-    n_nans1 = np.sum(np.isnan(data['h_li'][cycle1][beam][ix_x1:ix_x2]))
-    n_nans2 = np.sum(np.isnan(data['h_li'][cycle2][beam][ix_x3:ix_x4]))
+    n_nans1 = np.sum(np.isnan(data['h_li_RAW'][cycle1][beam][ix_x1:ix_x2]))
+    n_nans2 = np.sum(np.isnan(data['h_li_RAW'][cycle2][beam][ix_x3:ix_x4]))
 
     ### Only process if there are fewer than 10% nans in either data chunk:
-    if not (n_nans1 / len(h_li1) <= max_percent_nans / 100) and (n_nans2 / len(h_li2) <= max_percent_nans / 100):
+    if ((n_nans1 / len(h_li1) >= max_percent_nans / 100) or (n_nans2 / len(h_li2) >= max_percent_nans / 100)):
         ### If there are too many nans, just save a nan
         data['velocities'][beam][xi] = np.nan
         data['correlations'][beam][xi] = np.nan
