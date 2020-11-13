@@ -69,8 +69,10 @@ def calculate_velocities(data, cycle1, cycle2, beams, search_width=1000, segment
 
     ### Loop over each beam
     for beam in beams:
-        data  = calculate_velocity_single_beam(data,cycle1,cycle2,beam,search_width=search_width,segment_length=segment_length,
-                                    max_percent_nans=max_percent_nans,along_track_step=along_track_step, dx=dx)
+        if (beam in data['x_atc'][cycle1].keys()) and (beam in data['x_atc'][cycle2].keys()): # if data is available for both beams
+            data  = calculate_velocity_single_beam(data,cycle1,cycle2,beam,search_width=search_width,segment_length=segment_length,
+                                        max_percent_nans=max_percent_nans,along_track_step=along_track_step, dx=dx)
+        # eventually: fill in empty data with some flag
 
     return data
 
