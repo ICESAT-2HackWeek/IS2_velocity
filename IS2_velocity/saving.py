@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
 from astropy.time import Time
 import h5py
-import pyproj
-import glob
-from .extract_alongtrack import get_measures_along_track_velocity
 
 def save_is2_velocity(data,rgt,write_out_path,prepend,product,map_data_root,
                     cycle1,cycle2,dx,segment_length,search_width,along_track_step,
@@ -53,13 +49,6 @@ def save_is2_velocity(data,rgt,write_out_path,prepend,product,map_data_root,
 
     for beam in data['velocities'].keys():
 
-        ### Output xy locations of midpoints as well
-        midpoints_xy = np.array(pyproj.Proj(3031)(data['midpoints_lons'][beam], data['midpoints_lats'][beam]))
-
-        #extract measures veloc outside of this loop
-        measures_Vx_path = glob.glob( map_data_root + '*_Vx.tif')[0]
-        measures_Vy_path = glob.glob( map_data_root + '*_Vy.tif')[0]
-
         ### Add velocities to hdf5 file for each beam
         with h5py.File(h5_file_out, 'a') as f:
             f[beam + '/x_atc'] = data['midpoints_x_atc'][beam]  # assign x_atc value of half way along the segment
@@ -71,6 +60,5 @@ def save_is2_velocity(data,rgt,write_out_path,prepend,product,map_data_root,
             f[beam + '/segment_ids'] = data['midpoints_seg_ids'][beam]
             f[beam + '/first_cycle_time'] = str(Time(data['times'][cycle1][beam][0]))
             f[beam + '/second_cycle_time'] = str(Time(data['times'][cycle2][beam][0]))
-            f[beam + '/Measures_v_along'] = get_measures_along_track_velocity(midpoints_xy[0], midpoints_xy[1], spatial_extent,
-                                                                      measures_Vx_path, measures_Vy_path)
-
+            f[beam + '/Measures_v_along'] = data['meas_v_along'][beam]
+            f[beam + '/Measures_v_across'] = data['meas_v_across'][beam]
