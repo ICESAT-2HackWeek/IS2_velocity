@@ -13,7 +13,7 @@ from pyproj import Proj
 proj_stere = Proj('epsg:3031')
 
 def plot_measures_along_track_comparison(rgt, beams, data_path, correlation_threshold, spatial_extent, plot_out_location, map_data_root,
-                                         velocity_number, epsg, close=False):
+                                         velocity_number, flip_meas_sign=False, close=False):
     """
 
     :param rgt:
