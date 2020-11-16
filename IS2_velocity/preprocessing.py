@@ -73,13 +73,23 @@ def interpolate_nans(data):
 
     Warning("Be careful interpolating, linear interpolation could lead to misleading correlations.")
 
+    # to save raw data
+    data['h_li_RAW'] = {}
+
     for cycle in data['h_li'].keys():
+        # to save raw data
+        data['h_li_RAW'][cycle] = {}
+
         for beam in data['h_li'][cycle].keys():
+            # to save raw data
+            data['h_li_RAW'][cycle][beam] = data['h_li'][cycle][beam]
+
             ### interpolate nans in pandas
             interp_hold = {'x_atc': data['x_atc'][cycle][beam], 'h_li': data['h_li'][cycle][beam]}
             df = pd.DataFrame(interp_hold, columns = ['x_atc','h_li'])
-            # linear interpolation for now
-            df['h_li'].interpolate(method = 'linear', inplace = True)
+            # linear interpolation for now; forward and backward, so nans at start and end are filled also
+            df['h_li'].interpolate(method = 'linear', limit_direction = 'forward', inplace = True)
+            df['h_li'].interpolate(method = 'linear', limit_direction = 'backward', inplace = True)
             data['h_li'][cycle][beam] = df['h_li'].values
 
     data['flags'].append('interp_nans')
