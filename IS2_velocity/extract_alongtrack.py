@@ -6,118 +6,61 @@ try:
     import pointCollection as pc
 except:
     print('Continuing withough pointCollection')
-import os, pyproj
+from pyproj import Proj
+proj_stere = Proj('epsg:3031')
 
-def add_surface_velocity_to_is2_dict(is2_dict, spatial_extent, path, vel_x, vel_y ):
-    """
+def get_measures(data, spatial_extent, measures_path):
+    r"""Add the Measures surface velocity to the local data dictionary.
 
-    is2_dict: Python dictionary with ATL06 track data
-    spatial_extent: bounding box of the interest area in the format:
-                    (e.g. [-65, -86, -55, -81] == [min_lon, min_lat, max_lon, max_lat])
-    path: local path to velocity data
-    vel_x: tif velocity raster with x component
-    vel_y: tif velocity raster with y component
+    Parameters
+    ------
+    data : dict
+        data dictionary
+    spatial_extent : list
+        bounding box of the interest area in the format
+        (e.g. [-65, -86, -55, -81] == [min_lon, min_lat, max_lon, max_lat])
+    measures_path : str
+        local path to velocity data where Vx and Vy are located (format Vx.tif and Vy.tif)
 
-    """
-    data_root = path
-
-    spatial_extent = np.array([spatial_extent])
-    lat=spatial_extent[[1, 3, 3, 1, 1]]
-    lon=spatial_extent[[2, 2, 0, 0, 2]]
-    print(lat)
-    print(lon)
-    # project the coordinates to Antarctic polar stereographic
-    xy=np.array(pyproj.Proj(3031)(lon, lat))
-    # get the bounds of the projected coordinates
-    XR=[np.nanmin(xy[0,:]), np.nanmax(xy[0,:])]
-    YR=[np.nanmin(xy[1,:]), np.nanmax(xy[1,:])]
-
-    Measures_vx=pc.grid.data().from_geotif(os.path.join(data_root,vel_x), bounds=[XR, YR])
-    Measures_vy=pc.grid.data().from_geotif(os.path.join(data_root,vel_y), bounds=[XR, YR])
-
-    vx = Measures_vx.interp(is2_dict['x'],is2_dict['y'])
-    vy = Measures_vy.interp(is2_dict['x'],is2_dict['y'])
-
-    #Solve for angle to rotate Vy to be along track and Vx to be across track
-    import math
-    xL=abs((is2_dict['x'][0])-(is2_dict['x'][1]))
-    yL=abs((is2_dict['y'][0])-(is2_dict['y'][1]))
-
-    #decides if is descending or ascending path
-    if is2_dict['x'][0]-is2_dict['x'][1] < 0:
-
-        theta_rad=math.atan(xL/yL)
-        #theta_deg=theta_rad*180/math.pi
-        is2_dict['v_along']=vy/math.cos(theta_rad)
-        is2_dict['v_across']=vx/math.cos(theta_rad)
-
-    else:
-
-        theta_rad=math.atan(xL/yL)
-        #theta_deg=theta_rad*180/math.pi
-        is2_dict['v_along']=vy/math.sin(theta_rad)
-        is2_dict['v_across']=vx/math.sin(theta_rad)
-
-    return is2_dict
-
-
-def get_measures_along_track_velocity(x_ps_beam, y_ps_beam , spatial_extent, vel_x_path, vel_y_path):
-    """
-
-    is2_dict: Python dictionary with ATL06 track data
-    spatial_extent: bounding box of the interest area in the format:
-                    (e.g. [-65, -86, -55, -81] == [min_lon, min_lat, max_lon, max_lat])
-    path: local path to velocity data
-    vel_x: tif velocity raster with x component
-    vel_y: tif velocity raster with y component
-
+    Output
+    ------
+    data : dict
     """
 
     #fix with if statement about type of list or array DONE
-
     if type(spatial_extent) == type([]):
-
         spatial_extent = np.array([spatial_extent])
-
-
     lat=spatial_extent[[1, 3, 3, 1, 1]]
     lon=spatial_extent[[2, 2, 0, 0, 2]]
 
     # project the coordinates to Antarctic polar stereographic
-    xy=np.array(pyproj.Proj(3031)(lon, lat))
+    meas_xy=np.array(proj_stere(lon, lat))
     # get the bounds of the projected coordinates
-    XR=[np.nanmin(xy[0,:]), np.nanmax(xy[0,:])]
-    YR=[np.nanmin(xy[1,:]), np.nanmax(xy[1,:])]
+    XR=[np.nanmin(meas_xy[0,:]), np.nanmax(meas_xy[0,:])]
+    YR=[np.nanmin(meas_xy[1,:]), np.nanmax(meas_xy[1,:])]
 
-    #Measures_vx=pc.grid.data().from_geotif(os.path.join(data_root,vel_x), bounds=[XR, YR])
-    #Measures_vy=pc.grid.data().from_geotif(os.path.join(data_root,vel_y), bounds=[XR, YR])
+    Measures_vx=pc.grid.data().from_geotif(measures_path+'Vx.tif', bounds=[XR, YR])
+    Measures_vy=pc.grid.data().from_geotif(measures_path+'Vy.tif', bounds=[XR, YR])
 
-    Measures_vx=pc.grid.data().from_geotif(vel_x_path, bounds=[XR, YR])
-    Measures_vy=pc.grid.data().from_geotif(vel_y_path, bounds=[XR, YR])
+    data['meas_v_along'] = {}
+    data['meas_v_across'] = {}
+    for beam in list(data['midpoints_lats'].keys()):
+        lats = data['midpoints_lats'][beam]
+        lons = data['midpoints_lons'][beam]
+        x,y = proj_stere(lons,lats)
 
-    vx = Measures_vx.interp(x_ps_beam,y_ps_beam)
-    vy = Measures_vy.interp(x_ps_beam,y_ps_beam)
+        vx = Measures_vx.interp(x,y)
+        vy = Measures_vy.interp(x,y)
 
-    #Solve for angle to rotate Vy to be along track and Vx to be across track
-    import math
-    xL=abs((x_ps_beam[0])-(x_ps_beam[1]))
-    yL=abs((y_ps_beam[0])-(y_ps_beam[1]))
+        #Solve for angle to rotate Vy to be along track and Vx to be across track
+        xL = x[1:] - x[:-1]
+        yL = y[1:] - y[:-1]
+        theta = np.arctan(yL/xL)
+        # Repeat the last angle so that the arrays are the same size.
+        theta = np.append(theta,np.arctan(yL[-1]/xL[-1]))
 
-    #decides if is descending or ascending path
-    if x_ps_beam[0]-x_ps_beam[1] < 0:
+        # Do the rotation
+        data['meas_v_along'][beam] = vx*np.cos(theta) + vy*np.cos(np.pi/2.-theta)
+        data['meas_v_across'][beam] = vx*np.sin(theta) - vy*np.sin(np.pi/2.-theta)
 
-        theta_rad=math.atan(xL/yL)
-        #theta_deg=theta_rad*180/math.pi
-        v_along=vy/math.cos(theta_rad)
-        #v_across=vx/math.cos(theta_rad)
-
-    else:
-
-        theta_rad=math.atan(xL/yL)
-        #theta_deg=theta_rad*180/math.pi
-        v_along=vy/math.sin(theta_rad)
-        #v_across=vx/math.sin(theta_rad)
-
-    #Vdiff=vy-v_along
-    return v_along
-
+    return data

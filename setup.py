@@ -16,6 +16,7 @@ setup(
         'pyproj',
         'pandas',
         'ipympl',
+        'ipywidgets',
         'pointCollection @ git+https://github.com/smithB/pointCollection.git#egg=pointCollection-1.0.0.0'
     ]
 )

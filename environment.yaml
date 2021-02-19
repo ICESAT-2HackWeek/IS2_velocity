@@ -6,6 +6,7 @@ dependencies:
   - jupyterlab=0.35.*
   - matplotlib=3.0.*
   - ipympl
+  - ipywidgets
   - scipy=1.2.*
   - numpy
   - pandas=0.24.*
